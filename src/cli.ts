@@ -5,7 +5,7 @@ const main = defineCommand({
   meta: {
     name: 'regxa',
     version: '0.1.0',
-    description: 'Universal package registry client — query npm, PyPI, crates.io, RubyGems, Packagist with a single PURL-native API.',
+    description: 'Universal package registry client — query npm, PyPI, crates.io, RubyGems, Packagist, Arch Linux, and Fedora with a single PURL-native API.',
   },
   subCommands: {
     info: () => import('./commands/info.ts').then(m => m.default),

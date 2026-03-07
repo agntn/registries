@@ -4,11 +4,12 @@
  *
  * These tests hit live APIs and may fail due to rate limiting or network issues.
  */
+import { describe, it, expect } from 'vitest'
 import { create, ecosystems, has } from '../../src/core/registry.ts'
 import '../../src/registries/index.ts'
 
 describe('registry smoke tests', () => {
-  it('all 6 ecosystems are registered', () => {
+  it('all 7 ecosystems are registered', () => {
     const registered = ecosystems()
     expect(registered).toContain('npm')
     expect(registered).toContain('cargo')
@@ -16,12 +17,14 @@ describe('registry smoke tests', () => {
     expect(registered).toContain('gem')
     expect(registered).toContain('composer')
     expect(registered).toContain('alpm')
-    expect(registered).toHaveLength(6)
+    expect(registered).toContain('rpm')
+    expect(registered).toHaveLength(7)
   })
 
   it('has() returns correct values', () => {
     expect(has('npm')).toBe(true)
     expect(has('cargo')).toBe(true)
+    expect(has('rpm')).toBe(true)
     expect(has('unknown')).toBe(false)
   })
 
@@ -107,6 +110,17 @@ describe('registry smoke tests', () => {
       expect(pkg.name).toBe('yay')
       expect(pkg.namespace).toBe('aur')
       expect(pkg.latestVersion).toBeTruthy()
+    })
+  })
+
+  describe('rpm/fedora — bash', { timeout: 15_000 }, () => {
+    it('fetchPackage', async () => {
+      const reg = create('rpm')
+      const pkg = await reg.fetchPackage('bash')
+      expect(pkg.name).toBe('bash')
+      expect(pkg.latestVersion).toBeTruthy()
+      expect(pkg.homepage).toContain('gnu.org')
+      expect(pkg.namespace).toBe('fedora')
     })
   })
 })

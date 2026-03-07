@@ -52,7 +52,7 @@ export async function withErrorHandling(fn: () => Promise<void>): Promise<void> 
     }
     if (error instanceof UnknownEcosystemError) {
       consola.error(`Unknown ecosystem: ${error.ecosystem}`)
-      consola.info('Supported: npm, cargo, pypi, gem, composer')
+      consola.info('Supported: npm, cargo, pypi, gem, composer, alpm, rpm')
       process.exit(1)
     }
     if (error instanceof InvalidPURLError) {

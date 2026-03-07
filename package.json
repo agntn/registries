@@ -1,7 +1,7 @@
 {
   "name": "regxa",
   "version": "0.1.4",
-  "description": "Universal package registry client. Query npm, PyPI, crates.io, RubyGems, Packagist and more with a single PURL-native API.",
+  "description": "Universal package registry client. Query npm, PyPI, crates.io, RubyGems, Packagist, Arch Linux, and Fedora with a single PURL-native API.",
   "type": "module",
   "license": "MIT",
   "sideEffects": false,
@@ -55,6 +55,8 @@
     "crates",
     "rubygems",
     "packagist",
+    "fedora",
+    "rpm",
     "universal",
     "metadata"
   ],
