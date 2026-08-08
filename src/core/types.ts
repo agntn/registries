@@ -1,5 +1,3 @@
-import type { Client } from "./client.ts";
-
 /** Normalized package metadata returned by any registry. */
 export interface Package {
   name: string;
@@ -53,19 +51,6 @@ export interface URLBuilder {
   readme(name: string, version?: string): string;
   purl(name: string, version?: string): string;
 }
-
-/** Common interface every registry must implement. */
-export interface Registry {
-  ecosystem(): string;
-  fetchPackage(name: string, signal?: AbortSignal): Promise<Package>;
-  fetchVersions(name: string, signal?: AbortSignal): Promise<Version[]>;
-  fetchDependencies(name: string, version: string, signal?: AbortSignal): Promise<Dependency[]>;
-  fetchMaintainers(name: string, signal?: AbortSignal): Promise<Maintainer[]>;
-  urls(): URLBuilder;
-}
-
-/** Factory function signature for creating registry instances. */
-export type RegistryFactory = (baseURL: string, client: Client) => Registry;
 
 /** Options for the HTTP client. */
 export interface ClientOptions {

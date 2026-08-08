@@ -2,7 +2,7 @@ import "./registries/index.ts";
 
 // Core API
 export { Client, defaultClient } from "./core/client.ts";
-export { register, create, ecosystems, has } from "./core/registry.ts";
+export { Registry, register, create, ecosystems, has } from "./core/registry.ts";
 export { parsePURL, fullName, createFromPURL, buildPURL } from "./core/purl.ts";
 export { normalizeLicense, combineLicenses } from "./core/license.ts";
 export { normalizeRepositoryURL } from "./core/repository.ts";
@@ -38,8 +38,6 @@ export type {
   VersionStatus,
   Scope,
   URLBuilder,
-  Registry,
-  RegistryFactory,
   ClientOptions,
   RateLimiter,
   ParsedPURL,

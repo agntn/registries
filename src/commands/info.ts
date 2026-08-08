@@ -1,4 +1,5 @@
-import type { Package, Registry } from "../core/types.ts";
+import type { Package } from "../core/types.ts";
+import type { Registry } from "../core/registry.ts";
 import { defineCommand } from "citty";
 import consola from "consola";
 import { resolveDocsUrl } from "../helpers.ts";

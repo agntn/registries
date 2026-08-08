@@ -1,11 +1,5 @@
-import type {
-  Dependency,
-  Maintainer,
-  Package,
-  Registry,
-  URLBuilder,
-  Version,
-} from "../core/types.ts";
+import type { Dependency, Maintainer, Package, URLBuilder, Version } from "../core/types.ts";
+import { Registry } from "../core/registry.ts";
 import { getStorage, computeIntegrity } from "./storage.ts";
 import {
   readLockfile,
@@ -25,13 +19,14 @@ import type { Storage } from "unstorage";
  * Pass a custom `storage` to use a non-default driver (e.g. Cloudflare KV).
  * If omitted, uses the globally configured storage (see `configureStorage()`).
  */
-export class CachedRegistry implements Registry {
+export class CachedRegistry extends Registry {
   readonly inner: Registry;
   readonly storage: Storage;
   private readonly lockfileStorage: Storage;
   private readonly inflight = new Map<string, Promise<unknown>>();
 
   constructor(inner: Registry, storage?: Storage) {
+    super();
     this.inner = inner;
     this.storage = storage ?? getStorage();
     this.lockfileStorage = storage ?? getStorage();

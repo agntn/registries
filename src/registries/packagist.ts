@@ -1,14 +1,6 @@
 import type { Client } from "../core/client.ts";
-import type {
-  Dependency,
-  Maintainer,
-  Package,
-  Registry,
-  RegistryFactory,
-  URLBuilder,
-  Version,
-} from "../core/types.ts";
-import { register } from "../core/registry.ts";
+import type { Dependency, Maintainer, Package, URLBuilder, Version } from "../core/types.ts";
+import { Registry, register } from "../core/registry.ts";
 import { HTTPError, NotFoundError, InvalidPURLError } from "../core/errors.ts";
 import { combineLicenses } from "../core/license.ts";
 import { normalizeRepositoryURL } from "../core/repository.ts";
@@ -54,8 +46,9 @@ interface PackagistVersion {
 }
 
 /** Packagist registry client. */
-class PackagistRegistry implements Registry {
+export class PackagistRegistry extends Registry {
   constructor(baseURL: string, client: Client) {
+    super();
     this.baseURL = baseURL;
     this.client = client;
   }
@@ -315,10 +308,4 @@ class PackagistRegistry implements Registry {
   }
 }
 
-/** Factory function for creating Packagist registry instances. */
-const factory: RegistryFactory = (baseURL: string, client: Client): Registry => {
-  return new PackagistRegistry(baseURL, client);
-};
-
-// Self-register on import
-register("composer", "https://packagist.org", factory);
+register("composer", "https://packagist.org", PackagistRegistry);

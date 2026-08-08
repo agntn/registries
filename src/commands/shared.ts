@@ -1,7 +1,6 @@
 import consola from "consola";
-import type { Registry } from "../core/types.ts";
 import { createFromPURL, parsePURL, fullName } from "../core/purl.ts";
-import { create, ecosystems } from "../core/registry.ts";
+import { create, ecosystems, type Registry } from "../core/registry.ts";
 import {
   HTTPError,
   NotFoundError,

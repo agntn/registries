@@ -48,13 +48,13 @@ test/
 
 ### Where to put new code
 
-| What | Where |
-|------|-------|
+| What                  | Where                                                            |
+| --------------------- | ---------------------------------------------------------------- |
 | New ecosystem adapter | `src/registries/<name>.ts` + import in `src/registries/index.ts` |
-| New CLI command | `src/commands/<name>.ts` + wire in `src/cli.ts` |
-| Public API addition | export from `src/index.ts` |
-| Shared type/contract | `src/core/types.ts` |
-| New unit test | `test/unit/<module>.test.ts` |
+| New CLI command       | `src/commands/<name>.ts` + wire in `src/cli.ts`                  |
+| Public API addition   | export from `src/index.ts`                                       |
+| Shared type/contract  | `src/core/types.ts`                                              |
+| New unit test         | `test/unit/<module>.test.ts`                                     |
 
 ## Code Conventions
 
@@ -84,7 +84,7 @@ test/
 
 ### Registries
 
-- Plugin-based via `register()`/`create()` factory. No hardcoded switch logic.
+- Plugin-based via abstract `Registry` subclasses registered with `register()` and resolved by `create()`. No hardcoded switch logic.
 - Side-effect registration is intentional: `import 'regxa/registries'`.
 - Each adapter normalizes upstream payloads into core types before returning.
 - No adapter-to-adapter imports.
@@ -103,13 +103,14 @@ test/
 
 ## Key Symbols
 
-| Symbol | Location | Role |
-|--------|----------|------|
-| `create` | `src/core/registry.ts` | Registry factory from ecosystem key |
-| `createCached` | `src/cache/index.ts` | Decorates registry with cache + lockfile |
-| `parsePURL` | `src/core/purl.ts` | Canonical PURL parser — single source of truth |
-| `Client` | `src/core/client.ts` | Central HTTP: retry, timeout, rate limiting |
-| `DEFAULT_TTL` | `src/cache/lockfile.ts` | Project-wide cache freshness policy |
+| Symbol         | Location                | Role                                                  |
+| -------------- | ----------------------- | ----------------------------------------------------- |
+| `Registry`     | `src/core/registry.ts`  | Abstract contract shared by adapters and decorators   |
+| `create`       | `src/core/registry.ts`  | Instantiates a registered class from an ecosystem key |
+| `createCached` | `src/cache/index.ts`    | Decorates registry with cache + lockfile              |
+| `parsePURL`    | `src/core/purl.ts`      | Canonical PURL parser — single source of truth        |
+| `Client`       | `src/core/client.ts`    | Central HTTP: retry, timeout, rate limiting           |
+| `DEFAULT_TTL`  | `src/cache/lockfile.ts` | Project-wide cache freshness policy                   |
 
 ## Banned Patterns
 
