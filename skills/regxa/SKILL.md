@@ -18,14 +18,14 @@ All queries use PURLs to identify packages:
 pkg:<type>/<name>@<version>
 ```
 
-| Ecosystem | PURL type | Example |
-|-----------|-----------|---------|
-| npm | `npm` | `pkg:npm/lodash`, `pkg:npm/%40babel/core@7.0.0` |
-| PyPI | `pypi` | `pkg:pypi/flask@3.1.1` |
-| crates.io | `cargo` | `pkg:cargo/serde@1.0.0` |
-| RubyGems | `gem` | `pkg:gem/rails@7.1.0` |
-| Packagist | `composer` | `pkg:composer/laravel/framework@11.0.0` |
-| Arch Linux | `alpm` | `pkg:alpm/arch/linux`, `pkg:alpm/aur/yay` |
+| Ecosystem  | PURL type  | Example                                         |
+| ---------- | ---------- | ----------------------------------------------- |
+| npm        | `npm`      | `pkg:npm/lodash`, `pkg:npm/%40babel/core@7.0.0` |
+| PyPI       | `pypi`     | `pkg:pypi/flask@3.1.1`                          |
+| crates.io  | `cargo`    | `pkg:cargo/serde@1.0.0`                         |
+| RubyGems   | `gem`      | `pkg:gem/rails@7.1.0`                           |
+| Packagist  | `composer` | `pkg:composer/laravel/framework@11.0.0`         |
+| Arch Linux | `alpm`     | `pkg:alpm/arch/linux`, `pkg:alpm/aur/yay`       |
 
 The CLI accepts shorthand without the `pkg:` prefix (e.g., `npm/lodash@4.17.21`). The PURL helpers (`fetchPackageFromPURL`, etc.) require the full `pkg:` prefix. The lower-level registry API takes bare package names directly.
 
@@ -104,30 +104,29 @@ const deps = await fetchDependenciesFromPURL("pkg:pypi/flask@3.1.1");
 const maintainers = await fetchMaintainersFromPURL("pkg:gem/rails");
 
 // Bulk fetch (concurrent)
-const packages = await bulkFetchPackages([
-  "pkg:npm/lodash",
-  "pkg:cargo/serde",
-  "pkg:pypi/flask",
-]);
+const packages = await bulkFetchPackages(["pkg:npm/lodash", "pkg:cargo/serde", "pkg:pypi/flask"]);
 ```
 
 ### Registry API (lower level)
 
-For more control, create a registry instance directly:
+For direct construction, import a concrete class from the registries subpath:
 
 ```typescript
-import { create } from "regxa";
+import { Client } from "regxa";
+import { NpmRegistry } from "regxa/registries";
 
-const npm = create("npm");
+const npm = new NpmRegistry("https://registry.npmjs.org", new Client());
 
 const pkg = await npm.fetchPackage("lodash");
 const versions = await npm.fetchVersions("@babel/core");
 const deps = await npm.fetchDependencies("lodash", "4.17.21");
 const urls = npm.urls();
-console.log(urls.registry("lodash"));       // npmjs.com URL
-console.log(urls.documentation("lodash"));  // docs URL
+console.log(urls.registry("lodash")); // npmjs.com URL
+console.log(urls.documentation("lodash")); // docs URL
 console.log(urls.purl("lodash", "4.17.21")); // PURL string
 ```
+
+Use `create("npm")` for lookup through the registered ecosystem classes.
 
 ### Cached queries
 
@@ -160,9 +159,9 @@ Read `references/api-reference.md` for the full type definitions and return shap
 
 ## Error Handling
 
-| Error | When | What to do |
-|-------|------|------------|
-| `NotFoundError` | Package or version does not exist | Check the PURL spelling and ecosystem |
-| `InvalidPURLError` | Malformed PURL string | Fix the format (see PURL table above) |
-| `UnknownEcosystemError` | Unsupported ecosystem type | Use one of: npm, cargo, pypi, gem, composer, alpm |
-| `RateLimitError` | Registry rate limit hit | The client retries automatically; wait if persistent |
+| Error                   | When                              | What to do                                           |
+| ----------------------- | --------------------------------- | ---------------------------------------------------- |
+| `NotFoundError`         | Package or version does not exist | Check the PURL spelling and ecosystem                |
+| `InvalidPURLError`      | Malformed PURL string             | Fix the format (see PURL table above)                |
+| `UnknownEcosystemError` | Unsupported ecosystem type        | Use one of: npm, cargo, pypi, gem, composer, alpm    |
+| `RateLimitError`        | Registry rate limit hit           | The client retries automatically; wait if persistent |

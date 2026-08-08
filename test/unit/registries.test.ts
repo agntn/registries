@@ -1,7 +1,14 @@
 import { Client } from "../../src/core/client.ts";
 import { NotFoundError, HTTPError } from "../../src/core/errors.ts";
 import { create } from "../../src/core/registry.ts";
-import "../../src/registries/index.ts";
+import {
+  AlpmRegistry,
+  CargoRegistry,
+  NpmRegistry,
+  PackagistRegistry,
+  PyPIRegistry,
+  RubyGemsRegistry,
+} from "../../src/registries/index.ts";
 
 describe("Registry Modules", () => {
   beforeEach(() => {
@@ -10,6 +17,23 @@ describe("Registry Modules", () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  it("should align registry classes with their ecosystem keys", () => {
+    const registries = [
+      ["npm", NpmRegistry],
+      ["cargo", CargoRegistry],
+      ["pypi", PyPIRegistry],
+      ["gem", RubyGemsRegistry],
+      ["composer", PackagistRegistry],
+      ["alpm", AlpmRegistry],
+    ] as const;
+
+    for (const [ecosystem, RegistryClass] of registries) {
+      const registry = create(ecosystem);
+      expect(registry).toBeInstanceOf(RegistryClass);
+      expect(registry.ecosystem()).toBe(ecosystem);
+    }
   });
 
   describe("npm registry", () => {

@@ -7,9 +7,8 @@ export type {
   VersionStatus,
   Scope,
   URLBuilder,
-  Registry,
-  RegistryFactory,
   ClientOptions,
   RateLimiter,
   ParsedPURL,
 } from "./core/types.ts";
+export type { Registry } from "./core/registry.ts";

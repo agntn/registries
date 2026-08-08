@@ -1,14 +1,6 @@
 import type { Client } from "../core/client.ts";
-import type {
-  Dependency,
-  Maintainer,
-  Package,
-  Registry,
-  RegistryFactory,
-  URLBuilder,
-  Version,
-} from "../core/types.ts";
-import { register } from "../core/registry.ts";
+import type { Dependency, Maintainer, Package, URLBuilder, Version } from "../core/types.ts";
+import { Registry, register } from "../core/registry.ts";
 import { HTTPError, NotFoundError } from "../core/errors.ts";
 import { combineLicenses, normalizeLicense } from "../core/license.ts";
 import { normalizeRepositoryURL } from "../core/repository.ts";
@@ -51,8 +43,9 @@ interface RubyGemsOwnerResponse {
 }
 
 /** RubyGems registry client. */
-class RubyGemsRegistry implements Registry {
+export class RubyGemsRegistry extends Registry {
   constructor(baseURL: string, client: Client) {
+    super();
     this.baseURL = baseURL;
     this.client = client;
   }
@@ -228,10 +221,4 @@ class RubyGemsRegistry implements Registry {
   }
 }
 
-/** Factory function for creating RubyGems registry instances. */
-const factory: RegistryFactory = (baseURL: string, client: Client): Registry => {
-  return new RubyGemsRegistry(baseURL, client);
-};
-
-// Self-register on import
-register("gem", "https://rubygems.org", factory);
+register("gem", "https://rubygems.org", RubyGemsRegistry);

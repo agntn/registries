@@ -1,7 +1,8 @@
 import { CachedRegistry } from "../../src/cache/cached-registry.ts";
 import { readLockfile, cacheKey, DEFAULT_TTL } from "../../src/cache/lockfile.ts";
 import { createHash } from "node:crypto";
-import type { Registry, URLBuilder } from "../../src/core/types.ts";
+import type { URLBuilder } from "../../src/core/types.ts";
+import { Registry } from "../../src/core/registry.ts";
 import type { Lockfile } from "../../src/cache/lockfile.ts";
 
 // Mock storage to avoid real file I/O
@@ -109,6 +110,7 @@ describe("CachedRegistry", () => {
       const inner = createMockRegistry("npm");
       const cached = new CachedRegistry(inner);
       expect(cached.inner).toBe(inner);
+      expect(cached).toBeInstanceOf(Registry);
     });
 
     it("initializes storage for ecosystem", () => {

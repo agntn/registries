@@ -1,5 +1,6 @@
 import consola from "consola";
-import type { Package, Registry } from "../../src/core/types.ts";
+import type { Package } from "../../src/core/types.ts";
+import type { Registry } from "../../src/core/registry.ts";
 import { outputPackageInfo } from "../../src/commands/info.ts";
 
 function createPackage(overrides: Partial<Package> = {}): Package {

@@ -1,14 +1,6 @@
 import type { Client } from "../core/client.ts";
-import type {
-  Dependency,
-  Maintainer,
-  Package,
-  Registry,
-  RegistryFactory,
-  URLBuilder,
-  Version,
-} from "../core/types.ts";
-import { register } from "../core/registry.ts";
+import type { Dependency, Maintainer, Package, URLBuilder, Version } from "../core/types.ts";
+import { Registry, register } from "../core/registry.ts";
 import { HTTPError, NotFoundError } from "../core/errors.ts";
 import { combineLicenses } from "../core/license.ts";
 import { buildPURL } from "../core/purl.ts";
@@ -83,8 +75,9 @@ interface AurPackageResult {
 }
 
 /** ALPM registry client — routes to Arch Linux official repos or AUR based on namespace. */
-class AlpmRegistry implements Registry {
+export class AlpmRegistry extends Registry {
   constructor(baseURL: string, client: Client) {
+    super();
     this.baseURL = baseURL;
     this.client = client;
   }
@@ -493,10 +486,4 @@ class AlpmRegistry implements Registry {
   }
 }
 
-/** Factory function for creating ALPM registry instances. */
-const factory: RegistryFactory = (baseURL: string, client: Client): Registry => {
-  return new AlpmRegistry(baseURL, client);
-};
-
-// Self-register on import
-register("alpm", "https://archlinux.org", factory);
+register("alpm", "https://archlinux.org", AlpmRegistry);

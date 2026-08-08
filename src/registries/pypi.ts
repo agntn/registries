@@ -1,14 +1,6 @@
 import type { Client } from "../core/client.ts";
-import type {
-  Dependency,
-  Maintainer,
-  Package,
-  Registry,
-  RegistryFactory,
-  URLBuilder,
-  Version,
-} from "../core/types.ts";
-import { register } from "../core/registry.ts";
+import type { Dependency, Maintainer, Package, URLBuilder, Version } from "../core/types.ts";
+import { Registry, register } from "../core/registry.ts";
 import { HTTPError, NotFoundError } from "../core/errors.ts";
 import { normalizeLicense } from "../core/license.ts";
 import { normalizeRepositoryURL } from "../core/repository.ts";
@@ -63,14 +55,16 @@ interface PyPISimpleFile {
 }
 
 /** PyPI registry client. */
-class PyPIRegistry implements Registry {
+export class PyPIRegistry extends Registry {
   constructor(baseURL: string, client: Client) {
+    super();
     this.baseURL = baseURL;
     this.client = client;
   }
 
   readonly baseURL: string;
   readonly client: Client;
+
   private readonly downloadUrls = new Map<string, string>();
 
   ecosystem(): string {
@@ -383,10 +377,4 @@ class PyPIRegistry implements Registry {
   }
 }
 
-/** Factory function for creating PyPI registry instances. */
-const factory: RegistryFactory = (baseURL: string, client: Client): Registry => {
-  return new PyPIRegistry(baseURL, client);
-};
-
-// Self-register on import
-register("pypi", "https://pypi.org", factory);
+register("pypi", "https://pypi.org", PyPIRegistry);

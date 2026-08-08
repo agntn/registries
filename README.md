@@ -141,16 +141,19 @@ const packages = await bulkFetchPackages(["pkg:npm/lodash", "pkg:cargo/serde", "
 
 ### Direct registry access
 
-For more control, create a registry instance directly:
+For more control, instantiate a concrete registry class:
 
 ```ts
-import { create } from "regxa";
+import { Client } from "regxa";
+import { NpmRegistry } from "regxa/registries";
 
-const npm = create("npm");
+const npm = new NpmRegistry("https://registry.npmjs.org", new Client());
 const pkg = await npm.fetchPackage("lodash");
 const versions = await npm.fetchVersions("lodash");
 const deps = await npm.fetchDependencies("lodash", "4.17.21");
 ```
+
+Use `create("npm")` when you prefer lookup through the registered ecosystem classes.
 
 ### Cached registry
 

@@ -1,14 +1,6 @@
 import type { Client } from "../core/client.ts";
-import type {
-  Dependency,
-  Maintainer,
-  Package,
-  Registry,
-  RegistryFactory,
-  URLBuilder,
-  Version,
-} from "../core/types.ts";
-import { register } from "../core/registry.ts";
+import type { Dependency, Maintainer, Package, URLBuilder, Version } from "../core/types.ts";
+import { Registry, register } from "../core/registry.ts";
 import { HTTPError, NotFoundError } from "../core/errors.ts";
 import { normalizeLicense } from "../core/license.ts";
 import { normalizeRepositoryURL } from "../core/repository.ts";
@@ -82,8 +74,9 @@ interface NpmVersion {
 }
 
 /** npm registry client. */
-class NpmRegistry implements Registry {
+export class NpmRegistry extends Registry {
   constructor(baseURL: string, client: Client) {
+    super();
     this.baseURL = baseURL;
     this.client = client;
   }
@@ -377,10 +370,4 @@ class NpmRegistry implements Registry {
   }
 }
 
-/** Factory function for creating npm registry instances. */
-const factory: RegistryFactory = (baseURL: string, client: Client): Registry => {
-  return new NpmRegistry(baseURL, client);
-};
-
-// Self-register on import
-register("npm", "https://registry.npmjs.org", factory);
+register("npm", "https://registry.npmjs.org", NpmRegistry);

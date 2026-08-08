@@ -24,9 +24,8 @@ export type { Lockfile, LockfileEntry, EntryType } from "./lockfile.ts";
 
 // Convenience
 import type { Storage } from "unstorage";
-import type { Registry } from "../core/types.ts";
 import type { Client } from "../core/client.ts";
-import { create } from "../core/registry.ts";
+import { create, type Registry } from "../core/registry.ts";
 import { CachedRegistry } from "./cached-registry.ts";
 
 /** Options for creating a cached registry. */

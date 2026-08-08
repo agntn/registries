@@ -1,33 +1,50 @@
-import type { Registry, RegistryFactory } from "./types.ts";
 import type { Client } from "./client.ts";
 import { defaultClient } from "./client.ts";
 import { UnknownEcosystemError } from "./errors.ts";
+import type { Dependency, Maintainer, Package, URLBuilder, Version } from "./types.ts";
 
-const factories = new Map<string, RegistryFactory>();
+/** Common base for package registries and registry decorators. */
+export abstract class Registry {
+  abstract ecosystem(): string;
+  abstract fetchPackage(name: string, signal?: AbortSignal): Promise<Package>;
+  abstract fetchVersions(name: string, signal?: AbortSignal): Promise<Version[]>;
+  abstract fetchDependencies(
+    name: string,
+    version: string,
+    signal?: AbortSignal,
+  ): Promise<Dependency[]>;
+  abstract fetchMaintainers(name: string, signal?: AbortSignal): Promise<Maintainer[]>;
+  abstract urls(): URLBuilder;
+}
+
+const constructors = new Map<string, new (baseURL: string, client: Client) => Registry>();
 const defaults = new Map<string, string>();
 
-/** Register an ecosystem factory. Called by each registry module on import (side-effect). */
-export function register(ecosystem: string, defaultURL: string, factory: RegistryFactory): void {
-  factories.set(ecosystem, factory);
+/** Register an ecosystem class. Called by each registry module on import. */
+export function register(
+  ecosystem: string,
+  defaultURL: string,
+  RegistryClass: new (baseURL: string, client: Client) => Registry,
+): void {
+  constructors.set(ecosystem, RegistryClass);
   defaults.set(ecosystem, defaultURL);
 }
 
 /** Create a registry instance for the given ecosystem. */
 export function create(ecosystem: string, baseURL?: string, client?: Client): Registry {
-  const factory = factories.get(ecosystem);
-  if (!factory) {
+  const RegistryClass = constructors.get(ecosystem);
+  if (!RegistryClass) {
     throw new UnknownEcosystemError(ecosystem);
   }
-  const url = baseURL || defaults.get(ecosystem)!;
-  return factory(url, client ?? defaultClient());
+  return new RegistryClass(baseURL || defaults.get(ecosystem)!, client ?? defaultClient());
 }
 
 /** List all registered ecosystem names. */
 export function ecosystems(): string[] {
-  return [...factories.keys()];
+  return [...constructors.keys()];
 }
 
 /** Check if an ecosystem is registered. */
 export function has(ecosystem: string): boolean {
-  return factories.has(ecosystem);
+  return constructors.has(ecosystem);
 }

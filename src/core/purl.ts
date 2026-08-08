@@ -1,6 +1,6 @@
-import type { ParsedPURL, Registry } from "./types.ts";
+import type { ParsedPURL } from "./types.ts";
 import type { Client } from "./client.ts";
-import { create } from "./registry.ts";
+import { create, type Registry } from "./registry.ts";
 import { InvalidPURLError } from "./errors.ts";
 
 /** Decode a percent-encoded PURL component, throwing InvalidPURLError on malformed sequences. */
