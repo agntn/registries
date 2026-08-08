@@ -14,6 +14,8 @@ import { normalizeLicense } from "../core/license.ts";
 import { normalizeRepositoryURL } from "../core/repository.ts";
 import { buildPURL } from "../core/purl.ts";
 
+const PYPI_FILENAME_SEPARATORS = ["_", "-", "."] as const;
+
 /** PyPI JSON API response for a package. */
 interface PyPIPackageResponse {
   info: {
@@ -263,11 +265,18 @@ class PyPIRegistry implements Registry {
     normalizedName: string,
     versions: string[],
   ): string | undefined {
-    // Wheel/sdist filenames normalize the name to underscores
-    const prefix = normalizedName.replace(/-/g, "_") + "-";
     const lower = filename.toLowerCase();
+    let prefix: string | undefined;
 
-    if (!lower.startsWith(prefix)) return undefined;
+    for (const separator of PYPI_FILENAME_SEPARATORS) {
+      const candidate = normalizedName.replaceAll("-", separator) + "-";
+      if (lower.startsWith(candidate)) {
+        prefix = candidate;
+        break;
+      }
+    }
+
+    if (!prefix) return undefined;
 
     const afterPrefix = filename.slice(prefix.length);
 

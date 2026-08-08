@@ -781,6 +781,41 @@ describe("Registry Modules", () => {
       expect(versions[1].status).toBe("yanked");
     });
 
+    it("should match non-compliant pypi filenames with dashes or dots", async () => {
+      const client = new Client();
+      const mockResponse = {
+        meta: { "api-version": "1.1" },
+        name: "example-package-name",
+        versions: ["1.0.0", "2.0.0"],
+        files: [
+          {
+            filename: "example-package-name-1.0.0-py3-none-any.whl",
+            url: "https://files.pythonhosted.org/packages/example-package-name-1.0.0.whl",
+            hashes: { sha256: "dash123" },
+            yanked: false,
+            "upload-time": "2024-01-01T00:00:00Z",
+          },
+          {
+            filename: "example.package.name-2.0.0.tar.gz",
+            url: "https://files.pythonhosted.org/packages/example.package.name-2.0.0.tar.gz",
+            hashes: { sha256: "dot456" },
+            yanked: false,
+            "upload-time": "2024-02-01T00:00:00Z",
+          },
+        ],
+      };
+
+      vi.spyOn(client, "getJSON").mockResolvedValueOnce(mockResponse);
+
+      const registry = create("pypi", undefined, client);
+      const versions = await registry.fetchVersions("example-package-name");
+
+      expect(versions[0].publishedAt).toEqual(new Date("2024-01-01T00:00:00Z"));
+      expect(versions[0].integrity).toBe("sha256-dash123");
+      expect(versions[1].publishedAt).toEqual(new Date("2024-02-01T00:00:00Z"));
+      expect(versions[1].integrity).toBe("sha256-dot456");
+    });
+
     it("should return empty versions when Simple API returns no versions", async () => {
       const client = new Client();
       const mockResponse = {
