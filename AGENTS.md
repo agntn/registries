@@ -1,4 +1,4 @@
-# regxa
+# @agntn/registries
 
 Universal package registry client — ESM-only TypeScript library + CLI. Normalizes package metadata across npm, PyPI, crates.io, RubyGems, and Packagist using PURL-first APIs.
 
@@ -85,7 +85,7 @@ test/
 ### Registries
 
 - Plugin-based via abstract `Registry` subclasses registered with `register()` and resolved by `create()`. No hardcoded switch logic.
-- Side-effect registration is intentional: `import 'regxa/registries'`.
+- Importing `@agntn/registries` registers the built-in adapters as an intentional side effect.
 - Each adapter normalizes upstream payloads into core types before returning.
 - No adapter-to-adapter imports.
 

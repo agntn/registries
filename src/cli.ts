@@ -3,7 +3,7 @@ import { defineCommand, runMain } from "citty";
 
 const main = defineCommand({
   meta: {
-    name: "regxa",
+    name: "registries",
     version: "0.1.0",
     description:
       "Universal package registry client — query npm, PyPI, crates.io, RubyGems, Packagist with a single PURL-native API.",

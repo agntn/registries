@@ -1,17 +1,17 @@
 import { homedir, platform } from "node:os";
 import { join } from "node:path";
 
-const APP_NAME = "regxa";
+const APP_NAME = "registries";
 
 /**
  * Resolve the cache directory following platform conventions:
- * - Linux: $XDG_CACHE_HOME/regxa or ~/.cache/regxa
- * - macOS: ~/Library/Caches/regxa
- * - Windows: %LOCALAPPDATA%/regxa/cache
+ * - Linux: $XDG_CACHE_HOME/registries or ~/.cache/registries
+ * - macOS: ~/Library/Caches/registries
+ * - Windows: %LOCALAPPDATA%/registries/cache
  */
 export function getCacheDir(): string {
   // Explicit override always wins
-  const envOverride = process.env["REGXA_CACHE_DIR"];
+  const envOverride = process.env["REGISTRIES_CACHE_DIR"];
   if (envOverride) return envOverride;
 
   const os = platform();

@@ -1,14 +1,14 @@
 ---
-name: regxa
-description: Query package metadata from npm, PyPI, crates.io, RubyGems, Packagist, and Arch Linux using regxa. Supports looking up package info, versions, dependencies, and maintainers via PURL-native API or CLI. Use when the user needs package registry data across ecosystems. Do not use for building or publishing packages, managing lockfiles, or installing dependencies.
+name: registries
+description: Query package metadata from npm, PyPI, crates.io, RubyGems, Packagist, and Arch Linux using @agntn/registries. Supports looking up package info, versions, dependencies, and maintainers via PURL-native API or CLI. Use when the user needs package registry data across ecosystems. Do not use for building or publishing packages, managing lockfiles, or installing dependencies.
 metadata:
   author: oritwoen
   version: "0.1.5"
 ---
 
-# Query Package Registries with regxa
+# Query Package Registries with @agntn/registries
 
-regxa is a universal package registry client. It queries npm, PyPI, crates.io, RubyGems, Packagist, and Arch Linux with a single API. Packages are addressed using PURLs (Package URLs).
+@agntn/registries is a universal package registry client. It queries npm, PyPI, crates.io, RubyGems, Packagist, and Arch Linux with a single API. Packages are addressed using PURLs (Package URLs).
 
 ## PURL Format
 
@@ -36,35 +36,35 @@ Read `references/purl-guide.md` for scoped packages, namespaces, and special cha
 ### Package info
 
 ```bash
-regxa info npm/lodash
-regxa info pkg:cargo/serde --json
+registries info npm/lodash
+registries info pkg:cargo/serde --json
 ```
 
 ### Version listing
 
 ```bash
-regxa versions pypi/flask
-regxa versions pkg:npm/%40vue/core --json
+registries versions pypi/flask
+registries versions pkg:npm/%40vue/core --json
 ```
 
 ### Dependencies (requires version)
 
 ```bash
-regxa deps npm/lodash@4.17.21
-regxa deps pkg:pypi/flask@3.1.1 --json
+registries deps npm/lodash@4.17.21
+registries deps pkg:pypi/flask@3.1.1 --json
 ```
 
 ### Maintainers
 
 ```bash
-regxa maintainers gem/rails
-regxa maintainers pkg:composer/laravel/framework
+registries maintainers gem/rails
+registries maintainers pkg:composer/laravel/framework
 ```
 
 ### Cache management
 
 ```bash
-regxa cache clear          # Clear all cached data
+registries cache clear          # Clear all cached data
 ```
 
 Query commands (`info`, `versions`, `deps`, `maintainers`) accept `--json` for machine-readable output and `--no-cache` to bypass the cache.
@@ -74,7 +74,7 @@ Query commands (`info`, `versions`, `deps`, `maintainers`) accept `--json` for m
 ### Install
 
 ```bash
-npm install regxa
+npm install @agntn/registries
 ```
 
 ### One-shot PURL helpers
@@ -88,7 +88,7 @@ import {
   fetchDependenciesFromPURL,
   fetchMaintainersFromPURL,
   bulkFetchPackages,
-} from "regxa";
+} from "@agntn/registries";
 
 // Single package
 const pkg = await fetchPackageFromPURL("pkg:npm/lodash");
@@ -112,8 +112,8 @@ const packages = await bulkFetchPackages(["pkg:npm/lodash", "pkg:cargo/serde", "
 For direct construction, import a concrete class from the registries subpath:
 
 ```typescript
-import { Client } from "regxa";
-import { NpmRegistry } from "regxa/registries";
+import { Client } from "@agntn/registries";
+import { NpmRegistry } from "@agntn/registries";
 
 const npm = new NpmRegistry("https://registry.npmjs.org", new Client());
 
@@ -133,7 +133,7 @@ Use `create("npm")` for lookup through the registered ecosystem classes.
 Wrap any registry with caching:
 
 ```typescript
-import { create, CachedRegistry } from "regxa";
+import { create, CachedRegistry } from "@agntn/registries";
 
 const npm = create("npm");
 const cached = new CachedRegistry(npm);
@@ -145,7 +145,7 @@ const pkg = await cached.fetchPackage("lodash");
 ### Helper utilities
 
 ```typescript
-import { create, selectVersion, resolveDocsUrl } from "regxa";
+import { create, selectVersion, resolveDocsUrl } from "@agntn/registries";
 
 // Pick the best version from a list
 const best = selectVersion(versions, { requested: "4.17.21" });
