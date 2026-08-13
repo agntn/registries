@@ -1,5 +1,25 @@
 # Changelog
 
+## v0.2.0
+
+[compare changes](https://github.com/oritwoen/regxa/compare/v0.1.7...v0.2.0)
+
+### 🩹 Fixes
+
+- **pypi:** Match non-compliant filename separators ([#58](https://github.com/oritwoen/regxa/pull/58))
+
+### 💅 Refactors
+
+- ⚠️  Replace registry factories with classes ([#59](https://github.com/oritwoen/regxa/pull/59))
+
+#### ⚠️ Breaking Changes
+
+- ⚠️  Replace registry factories with classes ([#59](https://github.com/oritwoen/regxa/pull/59))
+
+### ❤️ Contributors
+
+- Ori ([@oritwoen](https://github.com/oritwoen))
+
 ## v0.1.7
 
 [compare changes](https://github.com/oritwoen/regxa/compare/v0.1.6...v0.1.7)
