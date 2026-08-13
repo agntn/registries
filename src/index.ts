@@ -1,4 +1,12 @@
 import "./registries/index.ts";
+export {
+  AlpmRegistry,
+  CargoRegistry,
+  NpmRegistry,
+  PackagistRegistry,
+  PyPIRegistry,
+  RubyGemsRegistry,
+} from "./registries/index.ts";
 
 // Core API
 export { Client, defaultClient } from "./core/client.ts";

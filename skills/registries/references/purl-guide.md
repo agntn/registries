@@ -46,12 +46,12 @@ If no namespace is given, `arch` is assumed.
 
 Characters that need percent-encoding in PURLs:
 
-| Character | Encoded | Example |
-|-----------|---------|---------|
-| `@` | `%40` | `%40babel/core` |
-| `/` | `%2F` | (in name only, not as separator) |
-| `+` | `%2B` | `1.0.0%2Bbuild.123` |
-| space | `%20` | `my%20package` |
+| Character | Encoded | Example                          |
+| --------- | ------- | -------------------------------- |
+| `@`       | `%40`   | `%40babel/core`                  |
+| `/`       | `%2F`   | (in name only, not as separator) |
+| `+`       | `%2B`   | `1.0.0%2Bbuild.123`              |
+| space     | `%20`   | `my%20package`                   |
 
 ## Shorthand (CLI only)
 
@@ -86,7 +86,7 @@ The `repository_url` qualifier overrides the default registry base URL.
 ## Building PURLs Programmatically
 
 ```typescript
-import { buildPURL, parsePURL } from "regxa";
+import { buildPURL, parsePURL } from "@agntn/registries";
 
 const purl = buildPURL({
   type: "npm",

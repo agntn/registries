@@ -6,7 +6,7 @@ import { HTTPError, RateLimitError } from "./errors.ts";
 const DEFAULT_MAX_RETRIES = 5;
 const DEFAULT_BASE_DELAY = 50;
 const DEFAULT_TIMEOUT = 30_000;
-const DEFAULT_USER_AGENT = "regxa/0.1.0";
+const DEFAULT_USER_AGENT = "registries/0.1.0";
 
 /**
  * Parse a `Retry-After` header into seconds.

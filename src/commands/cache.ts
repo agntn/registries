@@ -7,7 +7,7 @@ import { readLockfile, writeLockfile, pruneStale } from "../cache/lockfile.ts";
 export default defineCommand({
   meta: {
     name: "cache",
-    description: "Manage the regxa cache",
+    description: "Manage the registries cache",
   },
   subCommands: {
     clear: defineCommand({

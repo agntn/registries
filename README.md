@@ -1,9 +1,9 @@
-# regxa
+# @agntn/registries
 
-[![npm version](https://img.shields.io/npm/v/regxa?style=flat&colorA=130f40&colorB=474787)](https://npmjs.com/package/regxa)
-[![npm downloads](https://img.shields.io/npm/dm/regxa?style=flat&colorA=130f40&colorB=474787)](https://npm.chart.dev/regxa)
-[![license](https://img.shields.io/github/license/oritwoen/regxa?style=flat&colorA=130f40&colorB=474787)](https://github.com/oritwoen/regxa/blob/main/LICENSE)
-[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/oritwoen/regxa)
+[![npm version](https://img.shields.io/npm/v/%40agntn%2Fregistries?style=flat&colorA=130f40&colorB=474787)](https://npmjs.com/package/@agntn/registries)
+[![npm downloads](https://img.shields.io/npm/dm/%40agntn%2Fregistries?style=flat&colorA=130f40&colorB=474787)](https://npm.chart.dev/@agntn/registries)
+[![license](https://img.shields.io/github/license/agntn/registries?style=flat&colorA=130f40&colorB=474787)](https://github.com/agntn/registries/blob/main/LICENSE)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/agntn/registries)
 
 > Query npm, PyPI, crates.io, RubyGems, Packagist, and Arch Linux with one API. PURL-native, typed, cached.
 
@@ -13,7 +13,7 @@ If you need package metadata from multiple registries, you currently have two op
 
 There is no embeddable TypeScript library that normalizes across registries. The closest thing is [git-pkgs/registries](https://github.com/git-pkgs/registries) in Go, which covers 25 ecosystems but is Go-only. Aggregation APIs like [ecosyste.ms](https://ecosyste.ms/) and [deps.dev](https://deps.dev/) exist, but they are external services you can't bundle into your own tool.
 
-regxa fills that gap. One `fetchPackage` call, same response shape, regardless of whether the package lives on npm or Packagist. Uses [PURL (ECMA-427)](https://github.com/package-url/purl-spec) for addressing, so `pkg:npm/lodash` and `pkg:cargo/serde` resolve through the same code path. Storage-backed caching with a lockfile keeps things fast on repeated lookups.
+@agntn/registries fills that gap. One `fetchPackage` call, same response shape, regardless of whether the package lives on npm or Packagist. Uses [PURL (ECMA-427)](https://github.com/package-url/purl-spec) for addressing, so `pkg:npm/lodash` and `pkg:cargo/serde` resolve through the same code path. Storage-backed caching with a lockfile keeps things fast on repeated lookups.
 
 ## Features
 
@@ -21,17 +21,17 @@ regxa fills that gap. One `fetchPackage` call, same response shape, regardless o
 - 📦 **PURL-native** - [ECMA-427](https://github.com/package-url/purl-spec) identifiers as first-class input
 - 🏷️ **Normalized data model** - same `Package`, `Version`, `Dependency`, `Maintainer` types everywhere
 - 💾 **Storage-backed cache + lockfile** - unstorage-native, sha256 integrity checks, configurable TTL
-- ⌨️ **CLI included** - `regxa info npm/lodash`, `regxa versions cargo/serde`, `regxa deps pypi/flask@3.1.1`
+- ⌨️ **CLI included** - `registries info npm/lodash`, `registries versions cargo/serde`, `registries deps pypi/flask@3.1.1`
 - 🔁 **Retry + backoff** - exponential backoff with jitter, rate limiter interface
 - 🪶 **ESM-only, zero CJS** - built with [obuild](https://github.com/unjs/obuild)
 
 ## Install
 
 ```bash
-pnpm add regxa
+pnpm add @agntn/registries
 ```
 
-For the AI SDK tool (`regxa/ai` subpath), also install `ai` and `zod`:
+For the AI SDK tool (`@agntn/registries/ai` subpath), also install `ai` and `zod`:
 
 ```bash
 pnpm add ai zod
@@ -42,7 +42,7 @@ pnpm add ai zod
 ### API
 
 ```ts
-import { fetchPackageFromPURL } from "regxa";
+import { fetchPackageFromPURL } from "@agntn/registries";
 
 const pkg = await fetchPackageFromPURL("pkg:npm/lodash");
 
@@ -67,22 +67,22 @@ await fetchPackageFromPURL("pkg:alpm/arch/pacman");
 The `pkg:` prefix is optional in the CLI. `npm/lodash` works just as well:
 
 ```bash
-regxa info npm/lodash
-regxa versions cargo/serde
-regxa deps pypi/flask@3.1.1
-regxa maintainers gem/rails
-regxa deps alpm/aur/paru
+registries info npm/lodash
+registries versions cargo/serde
+registries deps pypi/flask@3.1.1
+registries maintainers gem/rails
+registries deps alpm/aur/paru
 ```
 
 Add `--json` for machine-readable output, `--no-cache` to skip the cache.
 
 ### AI SDK tool
 
-`regxa/ai` exports a ready-made tool for AI SDK apps:
+`@agntn/registries/ai` exports a ready-made tool for AI SDK apps:
 
 ```ts
 import { generateText } from "ai";
-import { packageTool } from "regxa/ai";
+import { packageTool } from "@agntn/registries/ai";
 
 const { text } = await generateText({
   model: yourModel,
@@ -127,7 +127,7 @@ import {
   fetchDependenciesFromPURL,
   fetchMaintainersFromPURL,
   bulkFetchPackages,
-} from "regxa";
+} from "@agntn/registries";
 
 // Single lookups
 const pkg = await fetchPackageFromPURL("pkg:npm/lodash");
@@ -144,8 +144,8 @@ const packages = await bulkFetchPackages(["pkg:npm/lodash", "pkg:cargo/serde", "
 For more control, instantiate a concrete registry class:
 
 ```ts
-import { Client } from "regxa";
-import { NpmRegistry } from "regxa/registries";
+import { Client } from "@agntn/registries";
+import { NpmRegistry } from "@agntn/registries";
 
 const npm = new NpmRegistry("https://registry.npmjs.org", new Client());
 const pkg = await npm.fetchPackage("lodash");
@@ -160,7 +160,7 @@ Use `create("npm")` when you prefer lookup through the registered ecosystem clas
 Wrap any registry with caching:
 
 ```ts
-import { createCached } from "regxa";
+import { createCached } from "@agntn/registries";
 
 const npm = createCached("npm");
 
@@ -171,19 +171,18 @@ const pkg = await npm.fetchPackage("lodash");
 const same = await npm.fetchPackage("lodash");
 ```
 
-By default, regxa uses filesystem storage and follows platform cache conventions: `~/.cache/regxa` on Linux (XDG), `~/Library/Caches/regxa` on macOS, `%LOCALAPPDATA%\regxa\cache` on Windows. Override with `REGXA_CACHE_DIR` env var.
+By default, @agntn/registries uses filesystem storage and follows platform cache conventions: `~/.cache/registries` on Linux (XDG), `~/Library/Caches/registries` on macOS, `%LOCALAPPDATA%\registries\cache` on Windows. Override with `REGISTRIES_CACHE_DIR` env var.
 
 For edge/serverless runtimes, configure a custom unstorage driver (example: Cloudflare KV binding):
 
 ```ts
-import { configureStorage, createCached } from "regxa";
+import { configureStorage, createCached } from "@agntn/registries";
 import { createStorage } from "unstorage";
 import cloudflareKVBindingDriver from "unstorage/drivers/cloudflare-kv-binding";
-import "regxa/registries";
 
 configureStorage(
   createStorage({
-    driver: cloudflareKVBindingDriver({ binding: "REGXA_CACHE" }),
+    driver: cloudflareKVBindingDriver({ binding: "REGISTRIES_CACHE" }),
   }),
 );
 
@@ -194,7 +193,7 @@ const pkg = await npm.fetchPackage("lodash");
 ### PURL parsing
 
 ```ts
-import { parsePURL, buildPURL, fullName } from "regxa";
+import { parsePURL, buildPURL, fullName } from "@agntn/registries";
 
 const parsed = parsePURL("pkg:npm/%40vue/core@3.5.0");
 // { type: 'npm', namespace: '@vue', name: 'core', version: '3.5.0', qualifiers: {}, subpath: '' }
@@ -208,25 +207,32 @@ buildPURL({ type: "cargo", name: "serde", version: "1.0.0" });
 ### Types
 
 ```ts
-import type { Package, Version, Dependency, Maintainer, Registry, ParsedPURL } from "regxa";
+import type {
+  Package,
+  Version,
+  Dependency,
+  Maintainer,
+  Registry,
+  ParsedPURL,
+} from "@agntn/registries";
 ```
 
 ## CLI
 
 ```bash
-regxa <command> [options]
+registries <command> [options]
 ```
 
-| Command                    | Description                                            |
-| -------------------------- | ------------------------------------------------------ |
-| `regxa info <purl>`        | Package metadata (name, license, repo, latest version) |
-| `regxa versions <purl>`    | List all published versions                            |
-| `regxa deps <purl>`        | Dependencies for a specific version                    |
-| `regxa maintainers <purl>` | Package maintainers / authors                          |
-| `regxa cache status`       | Show cache stats (entries, freshness)                  |
-| `regxa cache path`         | Print cache directory path                             |
-| `regxa cache clear`        | Remove all cached data                                 |
-| `regxa cache prune`        | Remove stale entries                                   |
+| Command                         | Description                                            |
+| ------------------------------- | ------------------------------------------------------ |
+| `registries info <purl>`        | Package metadata (name, license, repo, latest version) |
+| `registries versions <purl>`    | List all published versions                            |
+| `registries deps <purl>`        | Dependencies for a specific version                    |
+| `registries maintainers <purl>` | Package maintainers / authors                          |
+| `registries cache status`       | Show cache stats (entries, freshness)                  |
+| `registries cache path`         | Print cache directory path                             |
+| `registries cache clear`        | Remove all cached data                                 |
+| `registries cache prune`        | Remove stale entries                                   |
 
 ### Options
 
@@ -237,7 +243,7 @@ regxa <command> [options]
 
 ## Caching
 
-regxa stores fetched data and freshness metadata in unstorage. Default TTLs:
+@agntn/registries stores fetched data and freshness metadata in unstorage. Default TTLs:
 
 | Data type        | TTL        |
 | ---------------- | ---------- |
@@ -246,7 +252,7 @@ regxa stores fetched data and freshness metadata in unstorage. Default TTLs:
 | Dependencies     | 24 hours   |
 | Maintainers      | 24 hours   |
 
-Each cached entry has a sha256 integrity hash. If the stored data doesn't match the hash, regxa refetches automatically.
+Each cached entry has a sha256 integrity hash. If the stored data doesn't match the hash, @agntn/registries refetches automatically.
 
 ## Data model
 

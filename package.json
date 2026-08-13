@@ -1,5 +1,5 @@
 {
-  "name": "regxa",
+  "name": "@agntn/registries",
   "version": "0.1.7",
   "description": "Universal package registry client. Query npm, PyPI, crates.io, RubyGems, Packagist and more with a single PURL-native API.",
   "keywords": [
@@ -13,16 +13,16 @@
     "rubygems",
     "universal"
   ],
-  "homepage": "https://github.com/oritwoen/regxa#readme",
-  "bugs": "https://github.com/oritwoen/regxa/issues",
+  "homepage": "https://github.com/agntn/registries#readme",
+  "bugs": "https://github.com/agntn/registries/issues",
   "license": "MIT",
   "author": "oritwoen (https://github.com/oritwoen)",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/oritwoen/regxa.git"
+    "url": "git+https://github.com/agntn/registries.git"
   },
   "bin": {
-    "regxa": "./dist/cli.mjs"
+    "registries": "./dist/cli.mjs"
   },
   "files": [
     "dist"
@@ -53,6 +53,9 @@
       "types": "./dist/cache/index.d.mts",
       "import": "./dist/cache/index.mjs"
     }
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "build": "obuild",

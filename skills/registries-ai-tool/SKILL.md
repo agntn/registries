@@ -1,29 +1,29 @@
 ---
-name: regxa-ai-tool
-description: Integrates regxa's packageTool into AI applications built with the Vercel AI SDK. Provides structured package registry queries (info, versions, dependencies, maintainers, bulk lookups) as a tool for LLM agents. Use when building AI apps that need to query npm, PyPI, crates.io, or other registries. Do not use for direct CLI usage or non-AI integrations.
+name: registries-ai-tool
+description: Integrates @agntn/registries' packageTool into AI applications built with the Vercel AI SDK. Provides structured package registry queries (info, versions, dependencies, maintainers, bulk lookups) as a tool for LLM agents. Use when building AI apps that need to query npm, PyPI, crates.io, or other registries. Do not use for direct CLI usage or non-AI integrations.
 metadata:
   author: oritwoen
   version: "0.1.5"
 ---
 
-# regxa AI Tool Integration
+# @agntn/registries AI Tool Integration
 
-regxa exports a ready-made `packageTool` compatible with the Vercel AI SDK. It gives AI agents structured access to package registry data across npm, PyPI, crates.io, RubyGems, Packagist, and Arch Linux.
+@agntn/registries exports a ready-made `packageTool` compatible with the Vercel AI SDK. It gives AI agents structured access to package registry data across npm, PyPI, crates.io, RubyGems, Packagist, and Arch Linux.
 
 ## Step 1: Install Dependencies
 
 ```bash
-npm install regxa ai @ai-sdk/openai  # or any AI SDK provider
+npm install @agntn/registries ai @ai-sdk/openai  # or any AI SDK provider
 ```
 
 ## Step 2: Register the Tool
 
-Import `packageTool` from `regxa/ai` and pass it to the AI SDK:
+Import `packageTool` from `@agntn/registries/ai` and pass it to the AI SDK:
 
 ```typescript
 import { generateText } from "ai";
 import { openai } from "@ai-sdk/openai";
-import { packageTool } from "regxa/ai";
+import { packageTool } from "@agntn/registries/ai";
 
 const result = await generateText({
   model: openai("gpt-4o"),
@@ -87,7 +87,7 @@ The tool works with `streamText` as well:
 ```typescript
 import { streamText } from "ai";
 import { openai } from "@ai-sdk/openai";
-import { packageTool } from "regxa/ai";
+import { packageTool } from "@agntn/registries/ai";
 
 const result = streamText({
   model: openai("gpt-4o"),
