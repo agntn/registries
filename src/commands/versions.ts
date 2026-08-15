@@ -1,6 +1,17 @@
 import { defineCommand } from "citty";
 import consola from "consola";
+import type { Version } from "../core/types.ts";
+
 import { sharedArgs, resolvePURL, withErrorHandling } from "./shared.ts";
+export function selectRecentVersions(versions: Version[], limit: number): Version[] {
+  return versions
+    .toSorted((a, b) => {
+      if (a.publishedAt === null) return b.publishedAt === null ? 0 : 1;
+      if (b.publishedAt === null) return -1;
+      return b.publishedAt.getTime() - a.publishedAt.getTime();
+    })
+    .slice(0, limit);
+}
 
 export default defineCommand({
   meta: {
@@ -26,13 +37,12 @@ export default defineCommand({
       const [reg, name] = resolvePURL(args.purl, !args["no-cache"]);
       const versions = await reg.fetchVersions(name);
       const limit = Number.parseInt(args.limit, 10) || 20;
+      const shown = selectRecentVersions(versions, limit);
 
       if (args.json) {
-        console.log(JSON.stringify(versions.slice(0, limit), null, 2));
+        console.log(JSON.stringify(shown, null, 2));
         return;
       }
-
-      const shown = versions.slice(0, limit);
 
       consola.log("");
       consola.log(
