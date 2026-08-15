@@ -1,5 +1,6 @@
 import { createServer } from "node:http";
-import { Client, parseRetryAfter } from "../../src/core/client.ts";
+import { Client, parseRetryAfter, retryDelayFor } from "../../src/core/client.ts";
+import { RateLimitError } from "../../src/core/errors.ts";
 
 describe("parseRetryAfter", () => {
   it("parses numeric seconds", () => {
@@ -62,6 +63,17 @@ describe("parseRetryAfter", () => {
   });
 });
 
+describe("retryDelayFor", () => {
+  it("falls back for invalid values", () => {
+    expect(retryDelayFor("not-a-delay", 75)).toBe(75);
+  });
+
+  it("rejects values above the timer limit", () => {
+    expect(retryDelayFor("2147483", 10)).toBe(2_147_483_000);
+    expect(() => retryDelayFor("2147484", 10)).toThrow(RateLimitError);
+  });
+});
+
 describe("Client", () => {
   it("waits for Retry-After before retrying a 429 response", async () => {
     let requests = 0;
@@ -77,17 +89,22 @@ describe("Client", () => {
       response.end('{"ok":true}');
     });
 
-    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    await new Promise<void>((resolve, reject) => {
+      const onError = (error: Error) => reject(error);
+      server.once("error", onError);
+      server.listen(0, "127.0.0.1", () => {
+        server.off("error", onError);
+        resolve();
+      });
+    });
 
     try {
       const address = server.address();
       if (!address || typeof address === "string") throw new Error("Expected TCP server address");
+      const url = `http://127.0.0.1:${address.port}`;
 
       const startedAt = performance.now();
-      await new Client({ maxRetries: 1, baseDelay: 10 }).getJSON(
-        `http://127.0.0.1:${address.port}`,
-      );
-
+      await new Client({ maxRetries: 1, baseDelay: 10 }).getJSON(url);
       expect(performance.now() - startedAt).toBeGreaterThanOrEqual(900);
       expect(requests).toBe(2);
     } finally {
