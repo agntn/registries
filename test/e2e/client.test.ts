@@ -41,6 +41,7 @@ describe("Client", () => {
       expect(requests).toBe(2);
 
       responseStatus = 503;
+      // 2_147_484 seconds converts to 2_147_484_000 ms, just above Node's timer ceiling.
       retryAfter = "2147484";
       const failure = new Client({ maxRetries: 1, baseDelay: 10 }).getJSON(url);
       await expect(failure).rejects.toMatchObject({
