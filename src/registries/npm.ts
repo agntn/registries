@@ -176,6 +176,12 @@ export class NpmRegistry extends Registry {
       // Runtime dependencies
       if (versionData.dependencies) {
         for (const [depName, requirements] of Object.entries(versionData.dependencies)) {
+          if (
+            versionData.optionalDependencies &&
+            Object.hasOwn(versionData.optionalDependencies, depName)
+          ) {
+            continue;
+          }
           dependencies.push({
             name: depName,
             requirements,

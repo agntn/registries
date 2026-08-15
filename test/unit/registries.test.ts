@@ -194,6 +194,7 @@ describe("Registry Modules", () => {
         version: "4.17.21",
         dependencies: {
           underscore: "^1.0.0",
+          fsevents: "^2.3.0",
         },
         devDependencies: {
           mocha: "^10.0.0",
