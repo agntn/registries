@@ -1,4 +1,5 @@
-import { parseRetryAfter } from "../../src/core/client.ts";
+import { parseRetryAfter, retryDelayFor } from "../../src/core/client.ts";
+import { RateLimitError } from "../../src/core/errors.ts";
 
 describe("parseRetryAfter", () => {
   it("parses numeric seconds", () => {
@@ -58,5 +59,21 @@ describe("parseRetryAfter", () => {
 
   it("returns 60 for whitespace-only", () => {
     expect(parseRetryAfter("   ")).toBe(60);
+  });
+});
+
+describe("retryDelayFor", () => {
+  it("falls back for invalid values", () => {
+    expect(retryDelayFor("not-a-delay", 75)).toBe(75);
+  });
+
+  it("keeps a longer local backoff", () => {
+    expect(retryDelayFor("0", 75)).toBe(75);
+  });
+
+  it("rejects values above the timer limit", () => {
+    // Node timers accept at most 2_147_483_647 ms, so these straddle that ceiling in seconds.
+    expect(retryDelayFor("2147483", 10)).toBe(2_147_483_000);
+    expect(() => retryDelayFor("2147484", 10)).toThrow(RateLimitError);
   });
 });
