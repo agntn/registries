@@ -67,6 +67,10 @@ describe("retryDelayFor", () => {
     expect(retryDelayFor("not-a-delay", 75)).toBe(75);
   });
 
+  it("keeps a longer local backoff", () => {
+    expect(retryDelayFor("0", 75)).toBe(75);
+  });
+
   it("rejects values above the timer limit", () => {
     expect(retryDelayFor("2147483", 10)).toBe(2_147_483_000);
     expect(() => retryDelayFor("2147484", 10)).toThrow(RateLimitError);

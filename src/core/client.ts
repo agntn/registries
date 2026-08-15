@@ -77,7 +77,15 @@ export class Client {
         const attempt = maxRetries - remaining;
         const delay = baseDelay * Math.pow(2, attempt - 1);
         const jitteredDelay = delay + delay * Math.random() * 0.1;
-        return retryDelayFor(context.response?.headers.get("Retry-After"), jitteredDelay);
+        const retryAfter = context.response?.headers.get("Retry-After");
+        try {
+          return retryDelayFor(retryAfter, jitteredDelay);
+        } catch (error) {
+          if (error instanceof RateLimitError && context.response?.status !== 429) {
+            throw new HTTPError(context.response?.status ?? 0, String(context.request), "");
+          }
+          throw error;
+        }
       },
       retryStatusCodes: [408, 409, 425, 429, 500, 502, 503, 504],
       timeout: this.timeout,
