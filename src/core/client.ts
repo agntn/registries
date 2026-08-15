@@ -7,6 +7,24 @@ const DEFAULT_MAX_RETRIES = 5;
 const DEFAULT_BASE_DELAY = 50;
 const DEFAULT_TIMEOUT = 30_000;
 const DEFAULT_USER_AGENT = "registries/0.1.0";
+const MAX_TIMER_DELAY = 2_147_483_647;
+
+function parseRetryAfterValue(header: string | null | undefined): number | undefined {
+  if (!header) return undefined;
+  const trimmed = header.trim();
+  if (!trimmed) return undefined;
+
+  if (/^\d+$/.test(trimmed)) {
+    const seconds = Number(trimmed);
+    return Number.isNaN(seconds) ? undefined : seconds;
+  }
+
+  const timestamp = /[a-z]/i.test(trimmed) ? Date.parse(trimmed) : NaN;
+  if (Number.isNaN(timestamp)) return undefined;
+
+  const seconds = Math.ceil((timestamp - Date.now()) / 1000);
+  return Math.max(seconds, 0);
+}
 
 /**
  * Parse a `Retry-After` header into seconds.
@@ -18,19 +36,19 @@ const DEFAULT_USER_AGENT = "registries/0.1.0";
  * Returns 60 when the header is absent, empty, or unparseable.
  */
 export function parseRetryAfter(header: string | null | undefined): number {
-  if (!header) return 60;
-  const trimmed = header.trim();
-  if (!trimmed) return 60;
+  return parseRetryAfterValue(header) ?? 60;
+}
 
-  if (/^\d+$/.test(trimmed)) return Number(trimmed);
+/** Apply a valid, timer-safe `Retry-After` value or reject an unschedulable delay. */
+export function retryDelayFor(header: string | null | undefined, fallbackDelay: number): number {
+  const retryAfter = parseRetryAfterValue(header);
+  if (retryAfter === undefined) return fallbackDelay;
 
-  const timestamp = /[a-z]/i.test(trimmed) ? Date.parse(trimmed) : NaN;
-  if (!Number.isNaN(timestamp)) {
-    const seconds = Math.ceil((timestamp - Date.now()) / 1000);
-    return Math.max(seconds, 0);
+  const retryAfterDelay = retryAfter * 1000;
+  if (!Number.isFinite(retryAfterDelay) || retryAfterDelay > MAX_TIMER_DELAY) {
+    throw new RateLimitError(retryAfter);
   }
-
-  return 60;
+  return Math.max(fallbackDelay, retryAfterDelay);
 }
 
 /** HTTP client with retry, backoff, rate limiting, and timeout. */
@@ -58,8 +76,16 @@ export class Client {
         const remaining = typeof context.options.retry === "number" ? context.options.retry : 0;
         const attempt = maxRetries - remaining;
         const delay = baseDelay * Math.pow(2, attempt - 1);
-        const jitter = delay * Math.random() * 0.1;
-        return delay + jitter;
+        const jitteredDelay = delay + delay * Math.random() * 0.1;
+        const retryAfter = context.response?.headers.get("Retry-After");
+        try {
+          return retryDelayFor(retryAfter, jitteredDelay);
+        } catch (error) {
+          if (error instanceof RateLimitError && context.response?.status !== 429) {
+            throw new HTTPError(context.response?.status ?? 0, String(context.request), "");
+          }
+          throw error;
+        }
       },
       retryStatusCodes: [408, 409, 425, 429, 500, 502, 503, 504],
       timeout: this.timeout,
