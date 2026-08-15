@@ -72,6 +72,7 @@ describe("retryDelayFor", () => {
   });
 
   it("rejects values above the timer limit", () => {
+    // Node timers accept at most 2_147_483_647 ms, so these straddle that ceiling in seconds.
     expect(retryDelayFor("2147483", 10)).toBe(2_147_483_000);
     expect(() => retryDelayFor("2147484", 10)).toThrow(RateLimitError);
   });
