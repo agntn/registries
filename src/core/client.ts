@@ -58,8 +58,11 @@ export class Client {
         const remaining = typeof context.options.retry === "number" ? context.options.retry : 0;
         const attempt = maxRetries - remaining;
         const delay = baseDelay * Math.pow(2, attempt - 1);
-        const jitter = delay * Math.random() * 0.1;
-        return delay + jitter;
+        const jitteredDelay = delay + delay * Math.random() * 0.1;
+        const retryAfter = context.response?.headers.get("Retry-After");
+        return retryAfter === null || retryAfter === undefined
+          ? jitteredDelay
+          : Math.max(jitteredDelay, parseRetryAfter(retryAfter) * 1000);
       },
       retryStatusCodes: [408, 409, 425, 429, 500, 502, 503, 504],
       timeout: this.timeout,
