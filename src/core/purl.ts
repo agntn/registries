@@ -47,10 +47,9 @@ export function parsePURL(purlStr: string): ParsedPURL {
     for (const pair of queryStr.split("&")) {
       const eqIdx = pair.indexOf("=");
       if (eqIdx !== -1) {
-        qualifiers[decodePURLComponent(purlStr, pair.slice(0, eqIdx))] = decodePURLComponent(
-          purlStr,
-          pair.slice(eqIdx + 1),
-        );
+        const key = decodePURLComponent(purlStr, pair.slice(0, eqIdx)).toLowerCase();
+        const value = decodePURLComponent(purlStr, pair.slice(eqIdx + 1));
+        qualifiers[key] = value;
       }
     }
   }
@@ -135,7 +134,7 @@ export function buildPURL(parts: {
   qualifiers?: Record<string, string>;
   subpath?: string;
 }): string {
-  let purl = `pkg:${parts.type}/`;
+  let purl = `pkg:${parts.type.toLowerCase()}/`;
   if (parts.namespace) {
     purl += `${parts.namespace
       .split("/")
@@ -147,8 +146,13 @@ export function buildPURL(parts: {
     purl += `@${encodeURIComponent(parts.version)}`;
   }
   if (parts.qualifiers && Object.keys(parts.qualifiers).length > 0) {
-    const qs = Object.entries(parts.qualifiers)
-      .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+    const lowerMap: Record<string, string> = {};
+    for (const [k, v] of Object.entries(parts.qualifiers)) {
+      lowerMap[k.toLowerCase()] = v;
+    }
+    const sortedKeys = Object.keys(lowerMap).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+    const qs = sortedKeys
+      .map((k) => `${encodeURIComponent(k)}=${encodeURIComponent(lowerMap[k])}`)
       .join("&");
     purl += `?${qs}`;
   }

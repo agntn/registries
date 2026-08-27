@@ -321,3 +321,35 @@ describe("purl", () => {
     });
   });
 });
+
+describe("canonical qualifiers", () => {
+  it("lowercases qualifier keys in buildPURL", () => {
+    expect(
+      buildPURL({
+        type: "npm",
+        name: "lodash",
+        qualifiers: { Zeta: "1", arch: "x86_64" },
+      }),
+    ).toBe("pkg:npm/lodash?arch=x86_64&zeta=1");
+  });
+
+  it("sorts qualifier keys lexicographically in buildPURL", () => {
+    expect(
+      buildPURL({
+        type: "npm",
+        name: "lodash",
+        qualifiers: { os: "linux", arch: "x86_64", distro: "debian" },
+      }),
+    ).toBe("pkg:npm/lodash?arch=x86_64&distro=debian&os=linux");
+  });
+
+  it("normalizes uppercase qualifier keys in parsePURL", () => {
+    const parsed = parsePURL(
+      "pkg:npm/lodash?Repository_Url=https%3A%2F%2Fcustom.registry.com&Arch=x86_64",
+    );
+    expect(parsed.qualifiers).toEqual({
+      repository_url: "https://custom.registry.com",
+      arch: "x86_64",
+    });
+  });
+});
