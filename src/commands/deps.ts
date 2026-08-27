@@ -1,49 +1,9 @@
 import { defineCommand } from "citty";
 import consola from "consola";
+import type { Dependency } from "../core/types.ts";
 import { sharedArgs, resolvePURL, withErrorHandling } from "./shared.ts";
 
-export default defineCommand({
-  meta: {
-    name: "deps",
-    description: "List package dependencies",
-  },
-  args: {
-    ...sharedArgs,
-    purl: {
-      type: "positional",
-      description: "Package PURL with version (e.g. pkg:npm/lodash@4.17.21, cargo/serde@1.0)",
-      required: true,
-    },
-  },
-  async run({ args }) {
-    await withErrorHandling(async () => {
-      const [reg, name, version] = resolvePURL(args.purl, !args["no-cache"]);
-
-      if (!version) {
-        // Try to resolve latest version
-        const pkg = await reg.fetchPackage(name);
-        if (!pkg.latestVersion) {
-          consola.error(
-            "PURL must include a version for dependency lookup, and no latest version found.",
-          );
-          consola.info("Example: pkg:npm/lodash@4.17.21");
-          process.exit(1);
-        }
-        consola.info(`No version specified, using latest: ${pkg.latestVersion}`);
-        const deps = await reg.fetchDependencies(name, pkg.latestVersion);
-        outputDeps(name, pkg.latestVersion, deps, args.json);
-        return;
-      }
-
-      const deps = await reg.fetchDependencies(name, version);
-      outputDeps(name, version, deps, args.json);
-    });
-  },
-});
-
-import type { Dependency } from "../core/types.ts";
-
-function outputDeps(name: string, version: string, deps: Dependency[], json: boolean): void {
+export function outputDeps(name: string, version: string, deps: Dependency[], json: boolean): void {
   if (json) {
     console.log(JSON.stringify(deps, null, 2));
     return;
@@ -80,3 +40,44 @@ function outputDeps(name: string, version: string, deps: Dependency[], json: boo
     consola.log("");
   }
 }
+
+export default defineCommand({
+  meta: {
+    name: "deps",
+    description: "List package dependencies",
+  },
+  args: {
+    ...sharedArgs,
+    purl: {
+      type: "positional",
+      description: "Package PURL with version (e.g. pkg:npm/lodash@4.17.21, cargo/serde@1.0)",
+      required: true,
+    },
+  },
+  async run({ args }) {
+    await withErrorHandling(async () => {
+      const [reg, name, version] = resolvePURL(args.purl, !args["no-cache"]);
+
+      if (!version) {
+        // Try to resolve latest version
+        const pkg = await reg.fetchPackage(name);
+        if (!pkg.latestVersion) {
+          consola.error(
+            "PURL must include a version for dependency lookup, and no latest version found.",
+          );
+          consola.info("Example: pkg:npm/lodash@4.17.21");
+          process.exit(1);
+        }
+        if (!args.json) {
+          consola.info(`No version specified, using latest: ${pkg.latestVersion}`);
+        }
+        const deps = await reg.fetchDependencies(name, pkg.latestVersion);
+        outputDeps(name, pkg.latestVersion, deps, args.json);
+        return;
+      }
+
+      const deps = await reg.fetchDependencies(name, version);
+      outputDeps(name, version, deps, args.json);
+    });
+  },
+});
