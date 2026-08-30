@@ -1,5 +1,44 @@
 # Changelog
 
+## v0.3.0
+
+[compare changes](https://github.com/agntn/registries/compare/v0.1.7...v0.3.0)
+
+### 🩹 Fixes
+
+- **pypi:** Match non-compliant filename separators ([#58](https://github.com/agntn/registries/pull/58))
+- Order versions before applying limit ([#67](https://github.com/agntn/registries/pull/67))
+- **client:** Respect Retry-After before retrying ([#68](https://github.com/agntn/registries/pull/68))
+- Deduplicate optional npm dependencies ([#61](https://github.com/agntn/registries/pull/61))
+- Allow esbuild dependency builds ([2698a41](https://github.com/agntn/registries/commit/2698a41))
+- **deps:** Make unversioned JSON parseable ([#71](https://github.com/agntn/registries/pull/71))
+- **purl:** Make qualifier output stable ([#72](https://github.com/agntn/registries/pull/72))
+
+### 💅 Refactors
+
+- ⚠️  Replace registry factories with classes ([#59](https://github.com/agntn/registries/pull/59))
+
+### 🏡 Chore
+
+- ⚠️  Rebrand as @agntn/registries ([#60](https://github.com/agntn/registries/pull/60))
+- Update packagerManager version ([8719073](https://github.com/agntn/registries/commit/8719073))
+- Update version ([43b02af](https://github.com/agntn/registries/commit/43b02af))
+
+### 🤖 CI
+
+- Use OIDC for npm publishing ([#62](https://github.com/agntn/registries/pull/62))
+
+#### ⚠️ Breaking Changes
+
+- ⚠️  Replace registry factories with classes ([#59](https://github.com/agntn/registries/pull/59))
+- ⚠️  Rebrand as @agntn/registries ([#60](https://github.com/agntn/registries/pull/60))
+
+### ❤️ Contributors
+
+- Ori ([@oritwoen](https://github.com/oritwoen))
+- Oritwoen ([@oritwoen](https://github.com/oritwoen))
+- Aeitwoen <aeitwoen@gmail.com>
+
 ## v0.1.7
 
 [compare changes](https://github.com/agntn/registries/compare/v0.1.6...v0.1.7)

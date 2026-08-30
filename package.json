@@ -1,6 +1,6 @@
 {
   "name": "@agntn/registries",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Universal package registry client. Query npm, PyPI, crates.io, RubyGems, Packagist and more with a single PURL-native API.",
   "keywords": [
     "crates",
