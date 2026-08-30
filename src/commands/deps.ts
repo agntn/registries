@@ -29,7 +29,9 @@ export default defineCommand({
           consola.info("Example: pkg:npm/lodash@4.17.21");
           process.exit(1);
         }
-        consola.info(`No version specified, using latest: ${pkg.latestVersion}`);
+        if (!args.json) {
+          consola.info(`No version specified, using latest: ${pkg.latestVersion}`);
+        }
         const deps = await reg.fetchDependencies(name, pkg.latestVersion);
         outputDeps(name, pkg.latestVersion, deps, args.json);
         return;
