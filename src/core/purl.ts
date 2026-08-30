@@ -3,6 +3,8 @@ import type { Client } from "./client.ts";
 import { create, type Registry } from "./registry.ts";
 import { InvalidPURLError } from "./errors.ts";
 
+const QUALIFIER_KEY_PATTERN = /^[a-z][a-z0-9._-]*$/;
+
 /** Decode a percent-encoded PURL component, throwing InvalidPURLError on malformed sequences. */
 function decodePURLComponent(purlStr: string, value: string): string {
   try {
@@ -147,8 +149,20 @@ export function buildPURL(parts: {
     purl += `@${encodeURIComponent(parts.version)}`;
   }
   if (parts.qualifiers && Object.keys(parts.qualifiers).length > 0) {
-    const qs = Object.entries(parts.qualifiers)
-      .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+    const qualifiers = new Map<string, string>();
+    for (const [key, value] of Object.entries(parts.qualifiers)) {
+      const canonicalKey = key.toLowerCase();
+      if (!QUALIFIER_KEY_PATTERN.test(canonicalKey)) {
+        throw new InvalidPURLError(purl, `invalid qualifier key "${key}"`);
+      }
+      if (qualifiers.has(canonicalKey)) {
+        throw new InvalidPURLError(purl, `duplicate qualifier key "${canonicalKey}"`);
+      }
+      qualifiers.set(canonicalKey, value);
+    }
+    const qs = [...qualifiers]
+      .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
+      .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
       .join("&");
     purl += `?${qs}`;
   }
