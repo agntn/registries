@@ -7,30 +7,42 @@ import { hash } from "node:crypto";
 let _storage: Storage | undefined;
 
 /**
- * Configure a custom unstorage instance for @agntn/registries.
- * Call this before any cache operations to use a non-default driver
- * (e.g. Cloudflare KV, Redis, memory).
+ * Configure the storage backend before the first cache operation.
+ *
+ * @param storage - Storage backend to use.
  */
 export function configureStorage(storage: Storage): void {
   _storage = storage;
 }
 
-/** Get or create the shared storage instance. Uses configured storage or falls back to fs driver. */
+/**
+ * Get or create the shared storage backend.
+ *
+ * @returns {Storage} The configured or filesystem-backed storage.
+ */
 export function getStorage(): Storage {
-  if (!_storage) {
-    _storage = createStorage({
-      driver: fsDriver({ base: getCacheDir() }),
-    });
-  }
+  _storage ??= createStorage({
+    driver: fsDriver({ base: getCacheDir() }),
+  });
   return _storage;
 }
 
-/** Get a namespaced storage for a specific ecosystem (e.g. 'npm', 'cargo'). */
+/**
+ * Get storage scoped to one registry ecosystem.
+ *
+ * @param ecosystem - Registry ecosystem key.
+ * @returns {Storage} Namespaced storage for the ecosystem.
+ */
 export function getEcosystemStorage(ecosystem: string): Storage {
   return prefixStorage(getStorage(), ecosystem);
 }
 
-/** Compute a sha256 integrity hash of a JSON-serializable value. */
+/**
+ * Compute a SHA-256 integrity value for JSON-serializable data.
+ *
+ * @param value - Value to hash.
+ * @returns {string} The prefixed hexadecimal digest.
+ */
 export function computeIntegrity(value: unknown): string {
   return `sha256-${hash("sha256", JSON.stringify(value), "hex")}`;
 }

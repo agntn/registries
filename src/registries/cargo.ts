@@ -1,10 +1,10 @@
 import type { Client } from "../core/client.ts";
 import type { Dependency, Maintainer, Package, URLBuilder, Version } from "../core/types.ts";
 import { Registry, register } from "../core/registry.ts";
-import { HTTPError, NotFoundError } from "../core/errors.ts";
 import { normalizeLicense } from "../core/license.ts";
 import { normalizeRepositoryURL } from "../core/repository.ts";
 import { buildPURL } from "../core/purl.ts";
+import { rethrowFetchError } from "./error.ts";
 
 /** Crates.io API response for a single crate. */
 interface CratesPackageResponse {
@@ -94,6 +94,10 @@ interface CratesMaintainer {
   url: string;
 }
 
+function preferNonEmpty(value: string, fallback: string): string {
+  return value || fallback;
+}
+
 /** Crates.io registry client. */
 export class CargoRegistry extends Registry {
   constructor(baseURL: string, client: Client) {
@@ -115,7 +119,7 @@ export class CargoRegistry extends Registry {
     try {
       const data = await this.client.getJSON<CratesPackageResponse>(url, signal);
       const crateData = data.crate;
-      const latestVersion = crateData.max_stable_version || crateData.max_version;
+      const latestVersion = preferNonEmpty(crateData.max_stable_version, crateData.max_version);
       const latestVersionData = data.versions.find((v) => v.num === latestVersion);
 
       return {
@@ -141,10 +145,7 @@ export class CargoRegistry extends Registry {
         },
       };
     } catch (error) {
-      if (error instanceof HTTPError && error.isNotFound()) {
-        throw new NotFoundError("cargo", name);
-      }
-      throw error;
+      rethrowFetchError(error, this.ecosystem(), name);
     }
   }
 
@@ -175,10 +176,7 @@ export class CargoRegistry extends Registry {
 
       return versions;
     } catch (error) {
-      if (error instanceof HTTPError && error.isNotFound()) {
-        throw new NotFoundError("cargo", name);
-      }
-      throw error;
+      rethrowFetchError(error, this.ecosystem(), name);
     }
   }
 
@@ -214,10 +212,7 @@ export class CargoRegistry extends Registry {
 
       return dependencies;
     } catch (error) {
-      if (error instanceof HTTPError && error.isNotFound()) {
-        throw new NotFoundError("cargo", name, version);
-      }
-      throw error;
+      rethrowFetchError(error, this.ecosystem(), name, version);
     }
   }
 
@@ -241,10 +236,7 @@ export class CargoRegistry extends Registry {
 
       return maintainers;
     } catch (error) {
-      if (error instanceof HTTPError && error.isNotFound()) {
-        throw new NotFoundError("cargo", name);
-      }
-      throw error;
+      rethrowFetchError(error, this.ecosystem(), name);
     }
   }
 

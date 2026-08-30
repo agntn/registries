@@ -1,79 +1,47 @@
+type PrefixReplacement = readonly [prefix: string, replacement: string];
+
+const REPOSITORY_SHORTHANDS: readonly PrefixReplacement[] = [
+  ["github:", "https://github.com/"],
+  ["gitlab:", "https://gitlab.com/"],
+  ["bitbucket:", "https://bitbucket.org/"],
+];
+
+const GIT_TRANSPORTS: readonly PrefixReplacement[] = [
+  ["git://", "https://"],
+  ["ssh://git@", "https://"],
+];
+
+function extractRepositoryURL(raw: unknown): string {
+  if (typeof raw === "string") return raw;
+  if (typeof raw !== "object" || raw === null) return "";
+
+  const url = (raw as Record<string, unknown>)["url"];
+  return typeof url === "string" ? url : "";
+}
+
+function replacePrefix(value: string, replacements: readonly PrefixReplacement[]): string {
+  for (const [prefix, replacement] of replacements) {
+    if (value.startsWith(prefix)) return replacement + value.slice(prefix.length);
+  }
+  return value;
+}
+
 /**
- * Normalize a repository URL to a clean HTTPS git URL.
+ * Normalize repository shorthands and Git transports to HTTPS.
  *
- * Handles various formats:
- * - "git+https://github.com/foo/bar.git" → "https://github.com/foo/bar"
- * - "git://github.com/foo/bar" → "https://github.com/foo/bar"
- * - "ssh://git@github.com/foo/bar.git" → "https://github.com/foo/bar"
- * - "github:foo/bar" → "https://github.com/foo/bar"
- * - { url: "..." } → extracted and normalized
+ * @param raw - Repository URL string or object with a URL field.
+ * @returns {string} The normalized URL, or an empty string.
  */
 export function normalizeRepositoryURL(raw: unknown): string {
-  if (!raw) return "";
-
-  let url: string;
-
-  if (typeof raw === "string") {
-    url = raw;
-  } else if (typeof raw === "object" && raw !== null) {
-    const obj = raw as Record<string, unknown>;
-    if (typeof obj["url"] === "string") {
-      url = obj["url"];
-    } else {
-      return "";
-    }
-  } else {
-    return "";
-  }
-
-  url = url.trim();
+  let url = extractRepositoryURL(raw).trim();
   if (!url) return "";
 
-  // GitHub shorthand: "github:user/repo"
-  if (url.startsWith("github:")) {
-    url = `https://github.com/${url.slice(7)}`;
-  }
+  url = replacePrefix(url, REPOSITORY_SHORTHANDS);
+  if (url.startsWith("git+")) url = url.slice(4);
+  url = replacePrefix(url, GIT_TRANSPORTS);
 
-  // GitLab shorthand
-  if (url.startsWith("gitlab:")) {
-    url = `https://gitlab.com/${url.slice(7)}`;
-  }
-
-  // Bitbucket shorthand
-  if (url.startsWith("bitbucket:")) {
-    url = `https://bitbucket.org/${url.slice(10)}`;
-  }
-
-  // Strip "git+" prefix
-  if (url.startsWith("git+")) {
-    url = url.slice(4);
-  }
-
-  // Convert git:// to https://
-  if (url.startsWith("git://")) {
-    url = "https://" + url.slice(6);
-  }
-
-  // Convert ssh://git@host/... to https://host/...
-  if (url.startsWith("ssh://git@")) {
-    url = "https://" + url.slice(10);
-  }
-
-  // Convert git@host:user/repo to https://host/user/repo
   const sshMatch = url.match(/^git@([^:]+):(.+)$/);
-  if (sshMatch) {
-    url = `https://${sshMatch[1]}/${sshMatch[2]}`;
-  }
+  if (sshMatch) url = `https://${sshMatch[1]}/${sshMatch[2]}`;
 
-  // Strip trailing slash first so ".git/" doesn't survive
-  if (url.endsWith("/")) {
-    url = url.slice(0, -1);
-  }
-
-  // Strip .git suffix
-  if (url.endsWith(".git")) {
-    url = url.slice(0, -4);
-  }
-
-  return url;
+  return url.replace(/\/$/, "").replace(/\.git$/, "");
 }

@@ -3,8 +3,7 @@ import { NotFoundError, HTTPError } from "../../src/core/errors.ts";
 import { create } from "../../src/core/registry.ts";
 import "../../src/registries/index.ts";
 
-/** Helper — minimal Arch official search response. */
-function archSearchResponse(overrides: Record<string, unknown> = {}) {
+function archSearchResponse(overrides: Readonly<Record<string, unknown>> = {}) {
   return {
     results: [
       {
@@ -40,8 +39,7 @@ function archSearchResponse(overrides: Record<string, unknown> = {}) {
   };
 }
 
-/** Helper — minimal AUR info response. */
-function aurInfoResponse(overrides: Record<string, unknown> = {}) {
+function aurInfoResponse(overrides: Readonly<Record<string, unknown>> = {}) {
   return {
     resultcount: 1,
     type: "multiinfo",
@@ -406,27 +404,24 @@ describe("alpm registry", () => {
 
     it("should normalize input casing and whitespace", async () => {
       const client = new Client();
-      vi.spyOn(client, "getJSON").mockResolvedValueOnce(archSearchResponse());
+      const getJSON = vi.spyOn(client, "getJSON").mockResolvedValueOnce(archSearchResponse());
 
       const registry = create("alpm", undefined, client);
       const pkg = await registry.fetchPackage("  Arch/Pacman  ");
 
       expect(pkg.name).toBe("pacman");
-      expect(client.getJSON).toHaveBeenCalledWith(
-        expect.stringContaining("name=pacman"),
-        undefined,
-      );
+      expect(getJSON).toHaveBeenCalledWith(expect.stringContaining("name=pacman"), undefined);
     });
 
     it('should default to "arch" namespace when no slash in name', async () => {
       const client = new Client();
-      vi.spyOn(client, "getJSON").mockResolvedValueOnce(archSearchResponse());
+      const getJSON = vi.spyOn(client, "getJSON").mockResolvedValueOnce(archSearchResponse());
 
       const registry = create("alpm", undefined, client);
       const pkg = await registry.fetchPackage("pacman");
 
       expect(pkg.namespace).toBe("arch");
-      expect(client.getJSON).toHaveBeenCalledWith(
+      expect(getJSON).toHaveBeenCalledWith(
         expect.stringContaining("archlinux.org/packages/search/json"),
         undefined,
       );
@@ -434,12 +429,12 @@ describe("alpm registry", () => {
 
     it('should route "aur/..." to AUR API', async () => {
       const client = new Client();
-      vi.spyOn(client, "getJSON").mockResolvedValueOnce(aurInfoResponse());
+      const getJSON = vi.spyOn(client, "getJSON").mockResolvedValueOnce(aurInfoResponse());
 
       const registry = create("alpm", undefined, client);
       await registry.fetchPackage("aur/yay");
 
-      expect(client.getJSON).toHaveBeenCalledWith(
+      expect(getJSON).toHaveBeenCalledWith(
         expect.stringContaining("aur.archlinux.org/rpc/v5/info"),
         undefined,
       );

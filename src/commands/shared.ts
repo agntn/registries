@@ -25,8 +25,11 @@ export const sharedArgs = {
 } as const;
 
 /**
- * Resolve a PURL string or shorthand into [registry, name, version].
- * Uses CachedRegistry unless --no-cache is set.
+ * Resolve a PURL or shorthand, using cache unless disabled.
+ *
+ * @param input - PURL or shorthand package identifier.
+ * @param useCache - Whether to wrap the registry with caching.
+ * @returns {[Registry, string, string]} The registry, package name, and version.
  */
 export function resolvePURL(input: string, useCache = true): [Registry, string, string] {
   let purl = input;
@@ -45,7 +48,12 @@ export function resolvePURL(input: string, useCache = true): [Registry, string, 
   return createFromPURL(purl);
 }
 
-/** Run a command with standard error handling. */
+/**
+ * Run a command with standard CLI error handling.
+ *
+ * @param fn - Command operation to run.
+ * @returns {Promise<void>} Completion after the command or handled exit.
+ */
 export async function withErrorHandling(fn: () => Promise<void>): Promise<void> {
   try {
     await fn();

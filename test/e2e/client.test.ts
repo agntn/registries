@@ -22,7 +22,7 @@ describe("Client", () => {
     });
 
     await new Promise<void>((resolve, reject) => {
-      const onError = (error: Error) => reject(error);
+      const onError = (error: Readonly<Error>) => reject(error);
       server.once("error", onError);
       server.listen(0, "127.0.0.1", () => {
         server.off("error", onError);

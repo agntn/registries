@@ -3,14 +3,14 @@ import { UnknownEcosystemError } from "../../src/core/errors.ts";
 import { Registry, create, ecosystems, has, register } from "../../src/core/registry.ts";
 
 class TestRegistry extends Registry {
-  constructor(baseURL: string, client: Client) {
+  constructor(baseURL: string, client: unknown) {
     super();
     this.baseURL = baseURL;
     this.client = client;
   }
 
   readonly baseURL: string;
-  readonly client: Client;
+  readonly client: unknown;
 
   ecosystem(): string {
     return "test";
@@ -108,8 +108,14 @@ describe("registry", () => {
   });
 
   it("should include the ecosystem in an unknown-ecosystem error", () => {
-    expect(() => create("unknown-eco")).toThrow(
-      expect.objectContaining({ ecosystem: "unknown-eco" }),
-    );
+    expect.assertions(2);
+
+    try {
+      create("unknown-eco");
+    } catch (error) {
+      expect(error).toBeInstanceOf(UnknownEcosystemError);
+      if (!(error instanceof UnknownEcosystemError)) throw error;
+      expect(error.ecosystem).toBe("unknown-eco");
+    }
   });
 });

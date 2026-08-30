@@ -3,7 +3,12 @@ import { readLockfile, cacheKey, DEFAULT_TTL } from "../../src/cache/lockfile.ts
 import { createHash } from "node:crypto";
 import type { URLBuilder } from "../../src/core/types.ts";
 import { Registry } from "../../src/core/registry.ts";
-import type { Lockfile } from "../../src/cache/lockfile.ts";
+import type { Lockfile, LockfileEntry } from "../../src/cache/lockfile.ts";
+
+type ReadonlyLockfile = {
+  readonly version: number;
+  readonly entries: Readonly<Record<string, Readonly<LockfileEntry>>>;
+};
 
 // Mock storage to avoid real file I/O
 vi.mock("../../src/cache/storage.ts", () => {
@@ -35,12 +40,14 @@ vi.mock("../../src/cache/storage.ts", () => {
 let mockLockfile: Lockfile = { version: 1, entries: {} };
 
 vi.mock("../../src/cache/lockfile.ts", async () => {
-  const actual = await vi.importActual("../../src/cache/lockfile.ts");
+  const actual = await vi.importActual<typeof import("../../src/cache/lockfile.ts")>(
+    "../../src/cache/lockfile.ts",
+  );
   return {
     ...actual,
-    readLockfile: async () => JSON.parse(JSON.stringify(mockLockfile)),
-    writeLockfile: async (lockfile: Lockfile) => {
-      mockLockfile = JSON.parse(JSON.stringify(lockfile));
+    readLockfile: async () => structuredClone(mockLockfile),
+    writeLockfile: async (lockfile: ReadonlyLockfile) => {
+      mockLockfile = structuredClone(lockfile);
     },
   };
 });
@@ -59,6 +66,7 @@ function createMockRegistry(ecosystem: string, overrides?: Partial<Registry>): R
       name: "test-package",
       description: "A test package",
       homepage: "https://example.com",
+      documentation: "",
       repository: "https://github.com/example/test",
       licenses: "MIT",
       keywords: ["test"],
@@ -154,6 +162,7 @@ describe("CachedRegistry", () => {
             name: "lodash",
             description: "Utility library",
             homepage: "https://lodash.com",
+            documentation: "",
             repository: "https://github.com/lodash/lodash",
             licenses: "MIT",
             keywords: ["utility"],
@@ -181,6 +190,7 @@ describe("CachedRegistry", () => {
           name: "react",
           description: "React library",
           homepage: "https://react.dev",
+          documentation: "",
           repository: "https://github.com/facebook/react",
           licenses: "MIT",
           keywords: ["ui"],
@@ -209,6 +219,7 @@ describe("CachedRegistry", () => {
             name: "pkg",
             description: "Package",
             homepage: "",
+            documentation: "",
             repository: "",
             licenses: "MIT",
             keywords: [],
@@ -241,6 +252,7 @@ describe("CachedRegistry", () => {
             name: "pkg",
             description: "Package",
             homepage: "",
+            documentation: "",
             repository: "",
             licenses: "MIT",
             keywords: [],
@@ -555,6 +567,7 @@ describe("CachedRegistry", () => {
             name,
             description: `${name} package`,
             homepage: `https://${name}.com`,
+            documentation: "",
             repository: `https://github.com/${name}/${name}`,
             licenses: "MIT",
             keywords: [],
@@ -581,6 +594,7 @@ describe("CachedRegistry", () => {
           name: "test",
           description: "Test",
           homepage: "",
+          documentation: "",
           repository: "",
           licenses: "MIT",
           keywords: [],
@@ -606,6 +620,7 @@ describe("CachedRegistry", () => {
             name,
             description: "",
             homepage: "",
+            documentation: "",
             repository: "",
             licenses: "MIT",
             keywords: [],
@@ -659,6 +674,7 @@ describe("CachedRegistry", () => {
             name: "lodash",
             description: "Utility library",
             homepage: "",
+            documentation: "",
             repository: "",
             licenses: "MIT",
             keywords: [],
@@ -697,6 +713,7 @@ describe("CachedRegistry", () => {
             name: "pkg",
             description: "",
             homepage: "",
+            documentation: "",
             repository: "",
             licenses: "MIT",
             keywords: [],
@@ -752,6 +769,7 @@ describe("CachedRegistry", () => {
             name: "pkg",
             description: "",
             homepage: "",
+            documentation: "",
             repository: "",
             licenses: "MIT",
             keywords: [],
@@ -786,6 +804,7 @@ describe("CachedRegistry", () => {
             name: "pkg",
             description: "",
             homepage: "",
+            documentation: "",
             repository: "",
             licenses: "MIT",
             keywords: [],
@@ -877,6 +896,7 @@ describe("CachedRegistry", () => {
           name: "pkg",
           description: "Package",
           homepage: "",
+          documentation: "",
           repository: "",
           licenses: "MIT",
           keywords: [],
@@ -911,6 +931,7 @@ describe("CachedRegistry", () => {
             name,
             description: "",
             homepage: "",
+            documentation: "",
             repository: "",
             licenses: "MIT",
             keywords: [],

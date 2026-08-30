@@ -3,7 +3,14 @@ import type { Client } from "./core/client.ts";
 import { createFromPURL } from "./core/purl.ts";
 import { InvalidPURLError } from "./core/errors.ts";
 
-/** Fetch normalized package metadata from a PURL. */
+/**
+ * Fetch normalized package metadata from a package URL.
+ *
+ * @param purl - Package URL.
+ * @param signal - Optional cancellation signal.
+ * @param client - Optional HTTP client.
+ * @returns {Promise<Package>} Normalized package metadata.
+ */
 export async function fetchPackageFromPURL(
   purl: string,
   signal?: AbortSignal,
@@ -13,7 +20,14 @@ export async function fetchPackageFromPURL(
   return reg.fetchPackage(name, signal);
 }
 
-/** Fetch all versions from a PURL. */
+/**
+ * Fetch all versions from a package URL.
+ *
+ * @param purl - Package URL.
+ * @param signal - Optional cancellation signal.
+ * @param client - Optional HTTP client.
+ * @returns {Promise<Version[]>} Normalized versions.
+ */
 export async function fetchVersionsFromPURL(
   purl: string,
   signal?: AbortSignal,
@@ -23,7 +37,14 @@ export async function fetchVersionsFromPURL(
   return reg.fetchVersions(name, signal);
 }
 
-/** Fetch dependencies for a specific version from a PURL. */
+/**
+ * Fetch dependencies for a versioned package URL.
+ *
+ * @param purl - Versioned package URL.
+ * @param signal - Optional cancellation signal.
+ * @param client - Optional HTTP client.
+ * @returns {Promise<Dependency[]>} Normalized dependencies.
+ */
 export async function fetchDependenciesFromPURL(
   purl: string,
   signal?: AbortSignal,
@@ -36,7 +57,14 @@ export async function fetchDependenciesFromPURL(
   return reg.fetchDependencies(name, version, signal);
 }
 
-/** Fetch maintainers from a PURL. */
+/**
+ * Fetch maintainers from a package URL.
+ *
+ * @param purl - Package URL.
+ * @param signal - Optional cancellation signal.
+ * @param client - Optional HTTP client.
+ * @returns {Promise<Maintainer[]>} Normalized maintainers.
+ */
 export async function fetchMaintainersFromPURL(
   purl: string,
   signal?: AbortSignal,
@@ -48,10 +76,16 @@ export async function fetchMaintainersFromPURL(
 
 const DEFAULT_CONCURRENCY = 15;
 
-/** Bulk fetch packages from multiple PURLs, with concurrency limit. */
+/**
+ * Fetch packages concurrently, skipping failed lookups.
+ *
+ * @param purls - Package URLs to fetch.
+ * @param options - Optional concurrency, cancellation, and client settings.
+ * @returns {Promise<Map<string, Package>>} Results keyed by package URL.
+ */
 export async function bulkFetchPackages(
-  purls: string[],
-  options?: { concurrency?: number; signal?: AbortSignal; client?: Client },
+  purls: readonly string[],
+  options?: Readonly<{ concurrency?: number; signal?: AbortSignal; client?: Client }>,
 ): Promise<Map<string, Package>> {
   const concurrency = options?.concurrency ?? DEFAULT_CONCURRENCY;
   const results = new Map<string, Package>();
@@ -79,21 +113,18 @@ export async function bulkFetchPackages(
 }
 
 /**
- * Select the best matching version from a list.
+ * Select an exact requested or latest version, then the newest usable one.
  *
- * Resolution order:
- * 1. Exact match for `requested` (non-yanked/deprecated/retracted)
- * 2. Exact match for `latest` (non-yanked/deprecated/retracted)
- * 3. Newest available version with no negative status (by publishedAt)
- *
- * Returns `null` when no usable version exists.
+ * @param versions - Candidate versions.
+ * @param options - Optional requested and latest version numbers.
+ * @returns {Version | null} The selected version, or null.
  */
 export function selectVersion(
-  versions: Version[],
-  options?: {
+  versions: readonly Version[],
+  options?: Readonly<{
     requested?: string;
     latest?: string;
-  },
+  }>,
 ): Version | null {
   const { requested, latest } = options ?? {};
 
@@ -122,19 +153,22 @@ export function selectVersion(
 /**
  * Resolve the best documentation URL for a package.
  *
- * Fallback chain:
- * 1. `package.documentation` (explicit docs URL from registry)
- * 2. `package.homepage` (project homepage)
- * 3. `urls.documentation()` (ecosystem default, e.g. docs.rs, rubydoc.info)
+ * @param pkg - Package metadata.
+ * @param urls - Ecosystem URL builder.
+ * @param version - Optional package version.
+ * @returns {string} The explicit, homepage, or ecosystem documentation URL.
  */
 export function resolveDocsUrl(pkg: Package, urls: URLBuilder, version?: string): string {
   return pkg.documentation || pkg.homepage || urls.documentation(pkg.name, version);
 }
 
 /**
- * Resolve the best README URL for a package.
+ * Resolve the ecosystem README URL for a package.
  *
- * Returns the ecosystem-specific URL where the package README can be fetched.
+ * @param pkg - Package metadata.
+ * @param urls - Ecosystem URL builder.
+ * @param version - Optional package version.
+ * @returns {string} The README URL.
  */
 export function resolveReadmeUrl(pkg: Package, urls: URLBuilder, version?: string): string {
   return urls.readme(pkg.name, version);

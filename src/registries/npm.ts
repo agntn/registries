@@ -1,10 +1,16 @@
 import type { Client } from "../core/client.ts";
 import type { Dependency, Maintainer, Package, URLBuilder, Version } from "../core/types.ts";
 import { Registry, register } from "../core/registry.ts";
-import { HTTPError, NotFoundError } from "../core/errors.ts";
 import { normalizeLicense } from "../core/license.ts";
 import { normalizeRepositoryURL } from "../core/repository.ts";
 import { buildPURL } from "../core/purl.ts";
+import { rethrowFetchError } from "./error.ts";
+
+interface NpmPerson {
+  readonly name?: string;
+  readonly email?: string;
+  readonly url?: string;
+}
 
 /** npm registry API response for a single package. */
 interface NpmPackageResponse {
@@ -27,11 +33,7 @@ interface NpmPackageResponse {
     latest: string;
   };
   versions: Record<string, NpmVersion>;
-  maintainers?: Array<{
-    name?: string;
-    email?: string;
-    url?: string;
-  }>;
+  maintainers?: readonly NpmPerson[];
   time?: Record<string, string>;
 }
 
@@ -46,21 +48,9 @@ interface NpmVersion {
         type?: string;
       };
   keywords?: string[];
-  author?: {
-    name?: string;
-    email?: string;
-    url?: string;
-  };
-  contributors?: Array<{
-    name?: string;
-    email?: string;
-    url?: string;
-  }>;
-  maintainers?: Array<{
-    name?: string;
-    email?: string;
-    url?: string;
-  }>;
+  author?: NpmPerson;
+  contributors?: readonly NpmPerson[];
+  maintainers?: readonly NpmPerson[];
   dependencies?: Record<string, string>;
   devDependencies?: Record<string, string>;
   optionalDependencies?: Record<string, string>;
@@ -98,7 +88,9 @@ export class NpmRegistry extends Registry {
       const latestVersion = data["dist-tags"].latest;
       const latestVersionData = data.versions[latestVersion];
 
-      const licenses = this.extractLicense(data.license || latestVersionData?.license);
+      const licenses = data.license
+        ? this.extractLicense(data.license)
+        : this.extractLicense(latestVersionData?.license);
       const namespace = this.extractNamespace(name);
 
       return {
@@ -108,16 +100,13 @@ export class NpmRegistry extends Registry {
         documentation: "",
         repository: normalizeRepositoryURL(data.repository || ""),
         licenses,
-        keywords: data.keywords || [],
+        keywords: data.keywords ?? [],
         namespace,
         latestVersion,
         metadata: {},
       };
     } catch (error) {
-      if (error instanceof HTTPError && error.isNotFound()) {
-        throw new NotFoundError("npm", name);
-      }
-      throw error;
+      rethrowFetchError(error, this.ecosystem(), name);
     }
   }
 
@@ -127,36 +116,28 @@ export class NpmRegistry extends Registry {
 
     try {
       const data = await this.client.getJSON<NpmPackageResponse>(url, signal);
-      const versions: Version[] = [];
 
-      for (const [versionStr, versionData] of Object.entries(data.versions)) {
+      return Object.entries(data.versions).map(([versionStr, versionData]) => {
         const licenses = this.extractLicense(versionData.license);
         const publishedAt = data.time?.[versionStr] ? new Date(data.time[versionStr]) : null;
-
         const status = versionData.deprecated ? "deprecated" : "";
-
         const integrity = versionData.dist?.integrity
           ? versionData.dist.integrity
           : versionData.dist?.shasum
             ? `sha1-${versionData.dist.shasum}`
             : "";
 
-        versions.push({
+        return {
           number: versionStr,
           publishedAt,
           licenses,
           integrity,
           status,
           metadata: {},
-        });
-      }
-
-      return versions;
+        };
+      });
     } catch (error) {
-      if (error instanceof HTTPError && error.isNotFound()) {
-        throw new NotFoundError("npm", name);
-      }
-      throw error;
+      rethrowFetchError(error, this.ecosystem(), name);
     }
   }
 
@@ -170,69 +151,16 @@ export class NpmRegistry extends Registry {
 
     try {
       const versionData = await this.client.getJSON<NpmVersion>(url, signal);
+      const optionalNames = Object.keys(versionData.optionalDependencies ?? {});
 
-      const dependencies: Dependency[] = [];
-
-      // Runtime dependencies
-      if (versionData.dependencies) {
-        for (const [depName, requirements] of Object.entries(versionData.dependencies)) {
-          if (
-            versionData.optionalDependencies &&
-            Object.hasOwn(versionData.optionalDependencies, depName)
-          ) {
-            continue;
-          }
-          dependencies.push({
-            name: depName,
-            requirements,
-            scope: "runtime",
-            optional: false,
-          });
-        }
-      }
-
-      // Development dependencies
-      if (versionData.devDependencies) {
-        for (const [depName, requirements] of Object.entries(versionData.devDependencies)) {
-          dependencies.push({
-            name: depName,
-            requirements,
-            scope: "development",
-            optional: false,
-          });
-        }
-      }
-
-      // Optional dependencies
-      if (versionData.optionalDependencies) {
-        for (const [depName, requirements] of Object.entries(versionData.optionalDependencies)) {
-          dependencies.push({
-            name: depName,
-            requirements,
-            scope: "runtime",
-            optional: true,
-          });
-        }
-      }
-
-      // Peer dependencies
-      if (versionData.peerDependencies) {
-        for (const [depName, requirements] of Object.entries(versionData.peerDependencies)) {
-          dependencies.push({
-            name: depName,
-            requirements,
-            scope: "runtime",
-            optional: false,
-          });
-        }
-      }
-
-      return dependencies;
+      return [
+        ...this.mapDependencies(versionData.dependencies, "runtime", false, optionalNames),
+        ...this.mapDependencies(versionData.devDependencies, "development", false),
+        ...this.mapDependencies(versionData.optionalDependencies, "runtime", true),
+        ...this.mapDependencies(versionData.peerDependencies, "runtime", false),
+      ];
     } catch (error) {
-      if (error instanceof HTTPError && error.isNotFound()) {
-        throw new NotFoundError("npm", name, version);
-      }
-      throw error;
+      rethrowFetchError(error, this.ecosystem(), name, version);
     }
   }
 
@@ -242,68 +170,15 @@ export class NpmRegistry extends Registry {
 
     try {
       const data = await this.client.getJSON<NpmPackageResponse>(url, signal);
-      const maintainers: Maintainer[] = [];
-      const seen = new Set<string>();
+      const latestVersion = data.versions[data["dist-tags"].latest];
 
-      // Use top-level maintainers (people with publish access)
-      if (data.maintainers) {
-        for (const maintainer of data.maintainers) {
-          const key = this.maintainerKey(maintainer.name, maintainer.email);
-          if (!key || seen.has(key)) continue;
-          seen.add(key);
-          maintainers.push({
-            uuid: "",
-            login: maintainer.email ? maintainer.email.split("@")[0] : "",
-            name: maintainer.name || "",
-            email: maintainer.email || "",
-            url: maintainer.url || "",
-            role: "",
-          });
-        }
-      }
-
-      // Supplement with author and contributors from the latest version only
-      const latestTag = data["dist-tags"].latest;
-      const latestVersion = data.versions[latestTag];
-
-      if (latestVersion?.author) {
-        const key = this.maintainerKey(latestVersion.author.name, latestVersion.author.email);
-        if (key && !seen.has(key)) {
-          seen.add(key);
-          maintainers.push({
-            uuid: "",
-            login: latestVersion.author.email ? latestVersion.author.email.split("@")[0] : "",
-            name: latestVersion.author.name || "",
-            email: latestVersion.author.email || "",
-            url: latestVersion.author.url || "",
-            role: "author",
-          });
-        }
-      }
-
-      if (latestVersion?.contributors) {
-        for (const contributor of latestVersion.contributors) {
-          const key = this.maintainerKey(contributor.name, contributor.email);
-          if (key && !seen.has(key)) {
-            seen.add(key);
-            maintainers.push({
-              uuid: "",
-              login: contributor.email ? contributor.email.split("@")[0] : "",
-              name: contributor.name || "",
-              email: contributor.email || "",
-              url: contributor.url || "",
-              role: "contributor",
-            });
-          }
-        }
-      }
-
-      return maintainers;
+      return this.collectMaintainers(
+        data.maintainers,
+        latestVersion?.author,
+        latestVersion?.contributors,
+      );
     } catch (error) {
-      if (error instanceof HTTPError && error.isNotFound()) {
-        throw new NotFoundError("npm", name);
-      }
-      throw error;
+      rethrowFetchError(error, this.ecosystem(), name);
     }
   }
 
@@ -333,14 +208,62 @@ export class NpmRegistry extends Registry {
     };
   }
 
-  /** Build a stable dedup key. Prefers email (unique per account), falls back to name. */
+  private mapDependencies(
+    entries: Readonly<Record<string, string>> | undefined,
+    scope: Dependency["scope"],
+    optional: boolean,
+    excluded: readonly string[] = [],
+  ): Dependency[] {
+    const dependencies: Dependency[] = [];
+
+    for (const [name, requirements] of Object.entries(entries ?? {})) {
+      if (excluded.includes(name)) continue;
+      dependencies.push({ name, requirements, scope, optional });
+    }
+
+    return dependencies;
+  }
+
+  private collectMaintainers(
+    maintainers: readonly NpmPerson[] | undefined,
+    author: Readonly<NpmPerson> | undefined,
+    contributors: readonly NpmPerson[] | undefined,
+  ): Maintainer[] {
+    const candidates: Array<readonly [NpmPerson, string]> = [
+      ...(maintainers ?? []).map((maintainer) => [maintainer, ""] as const),
+      ...(author ? [[author, "author"] as const] : []),
+      ...(contributors ?? []).map((contributor) => [contributor, "contributor"] as const),
+    ];
+    const seen = new Set<string>();
+    const result: Maintainer[] = [];
+
+    for (const [maintainer, role] of candidates) {
+      const key = this.maintainerKey(maintainer.name, maintainer.email);
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      result.push(this.toMaintainer(maintainer, role));
+    }
+
+    return result;
+  }
+
+  private toMaintainer(maintainer: Readonly<NpmPerson>, role: string): Maintainer {
+    return {
+      uuid: "",
+      login: maintainer.email ? maintainer.email.split("@")[0] : "",
+      name: maintainer.name || "",
+      email: maintainer.email || "",
+      url: maintainer.url || "",
+      role,
+    };
+  }
+
   private maintainerKey(name: string | undefined, email: string | undefined): string {
     if (email) return email;
     if (name) return name;
     return "";
   }
 
-  /** Encode package name for URL (handle scoped packages). */
   private encodeName(name: string): string {
     if (name.startsWith("@")) {
       return name.replace("/", "%2F");
@@ -348,7 +271,6 @@ export class NpmRegistry extends Registry {
     return name;
   }
 
-  /** Extract namespace from scoped package name. */
   private extractNamespace(name: string): string {
     if (name.startsWith("@")) {
       const parts = name.split("/");
@@ -357,8 +279,7 @@ export class NpmRegistry extends Registry {
     return "";
   }
 
-  /** Extract and normalize license. */
-  private extractLicense(raw: string | { type?: string } | undefined): string {
+  private extractLicense(raw: string | Readonly<{ type?: string }> | undefined): string {
     if (!raw) return "";
 
     if (typeof raw === "string") {

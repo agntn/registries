@@ -45,10 +45,10 @@ export default defineCommand({
         const stale = entries.length - fresh.length;
 
         consola.log("");
-        consola.log(`  \x1b[1mCache status\x1b[0m`);
-        consola.log(`  \x1b[90mDirectory:\x1b[0m  ${getCacheDir()}`);
+        consola.log(`  \x1B[1mCache status\x1B[0m`);
+        consola.log(`  \x1B[90mDirectory:\x1B[0m  ${getCacheDir()}`);
         consola.log(
-          `  \x1b[90mEntries:\x1b[0m    ${entries.length} total, ${fresh.length} fresh, ${stale} stale`,
+          `  \x1B[90mEntries:\x1B[0m    ${entries.length} total, ${fresh.length} fresh, ${stale} stale`,
         );
         consola.log("");
 
@@ -60,7 +60,7 @@ export default defineCommand({
             byEco.set(eco, (byEco.get(eco) ?? 0) + 1);
           }
           for (const [eco, count] of byEco) {
-            consola.log(`  \x1b[36m${eco}\x1b[0m: ${count} cached`);
+            consola.log(`  \x1B[36m${eco}\x1B[0m: ${count} cached`);
           }
           consola.log("");
         }

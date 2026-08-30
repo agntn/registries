@@ -92,10 +92,15 @@ export class CachedRegistry extends Registry {
   }
 
   /**
-   * Generic cache-through method:
-   * 1. Check lockfile for fresh entry
-   * 2. If fresh -> read from storage
-   * 3. If stale/missing -> fetch, store, update lockfile
+   * Read a fresh cached value or fetch and persist its replacement.
+   *
+   * @param name - Package name.
+   * @param type - Cached data type.
+   * @param version - Package version when the cache entry is versioned.
+   * @param fetcher - Upstream operation used after a cache miss.
+   * @param signal - Optional cancellation signal.
+   * @param extraMeta - Optional lockfile metadata derived from the fetched value.
+   * @returns {Promise<T>} The cached or freshly fetched value.
    */
   private async cached<T>(
     name: string,

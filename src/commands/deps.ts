@@ -45,7 +45,12 @@ export default defineCommand({
 
 import type { Dependency } from "../core/types.ts";
 
-function outputDeps(name: string, version: string, deps: Dependency[], json: boolean): void {
+function outputDeps(
+  name: string,
+  version: string,
+  deps: readonly Dependency[],
+  json: boolean,
+): void {
   if (json) {
     console.log(JSON.stringify(deps, null, 2));
     return;
@@ -53,32 +58,40 @@ function outputDeps(name: string, version: string, deps: Dependency[], json: boo
 
   consola.log("");
   consola.log(
-    `  \x1b[1m${name}@${version}\x1b[0m — ${deps.length} dependenc${deps.length === 1 ? "y" : "ies"}`,
+    `  \x1B[1m${name}@${version}\x1B[0m — ${deps.length} dependenc${deps.length === 1 ? "y" : "ies"}`,
   );
   consola.log("");
 
-  const byScope = new Map<string, Dependency[]>();
-  for (const dep of deps) {
-    const scope = dep.scope || "runtime";
-    if (!byScope.has(scope)) byScope.set(scope, []);
-    byScope.get(scope)!.push(dep);
-  }
+  const byScope = groupByScope(deps);
 
   const scopeColors: Record<string, string> = {
-    runtime: "\x1b[32m",
-    development: "\x1b[33m",
-    build: "\x1b[35m",
-    test: "\x1b[36m",
-    optional: "\x1b[90m",
+    runtime: "\x1B[32m",
+    development: "\x1B[33m",
+    build: "\x1B[35m",
+    test: "\x1B[36m",
+    optional: "\x1B[90m",
   };
 
   for (const [scope, scopeDeps] of byScope) {
-    const color = scopeColors[scope] ?? "\x1b[0m";
-    consola.log(`  ${color}${scope}\x1b[0m (${scopeDeps.length})`);
+    const color = scopeColors[scope] ?? "\x1B[0m";
+    consola.log(`  ${color}${scope}\x1B[0m (${scopeDeps.length})`);
     for (const dep of scopeDeps) {
-      const opt = dep.optional ? " \x1b[90m(optional)\x1b[0m" : "";
-      consola.log(`    ${dep.name} \x1b[90m${dep.requirements}\x1b[0m${opt}`);
+      const opt = dep.optional ? " \x1B[90m(optional)\x1B[0m" : "";
+      consola.log(`    ${dep.name} \x1B[90m${dep.requirements}\x1B[0m${opt}`);
     }
     consola.log("");
   }
+}
+
+function groupByScope(deps: readonly Dependency[]): Map<string, Dependency[]> {
+  const byScope = new Map<string, Dependency[]>();
+
+  for (const dep of deps) {
+    const scope = dep.scope || "runtime";
+    const scopeDeps = byScope.get(scope) ?? [];
+    scopeDeps.push(dep);
+    byScope.set(scope, scopeDeps);
+  }
+
+  return byScope;
 }

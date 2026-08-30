@@ -1,9 +1,10 @@
 import type { Client } from "../core/client.ts";
 import type { Dependency, Maintainer, Package, URLBuilder, Version } from "../core/types.ts";
 import { Registry, register } from "../core/registry.ts";
-import { HTTPError, NotFoundError } from "../core/errors.ts";
+import { NotFoundError } from "../core/errors.ts";
 import { combineLicenses } from "../core/license.ts";
 import { buildPURL } from "../core/purl.ts";
+import { rethrowFetchError } from "./error.ts";
 
 const AUR_BASE_URL = "https://aur.archlinux.org";
 
@@ -254,7 +255,6 @@ export class AlpmRegistry extends Registry {
     }));
   }
 
-  /** Search official repos by exact package name. Prefers x86_64 results. */
   private async searchOfficial(name: string, signal?: AbortSignal): Promise<ArchPackageResult> {
     const url = `${this.baseURL}/packages/search/json/?name=${encodeURIComponent(name)}`;
 
@@ -266,13 +266,9 @@ export class AlpmRegistry extends Registry {
       }
 
       // Prefer x86_64 arch, fall back to first result
-      return data.results.find((r) => r.arch === "x86_64") || data.results[0]!;
+      return data.results.find((r) => r.arch === "x86_64") ?? data.results[0]!;
     } catch (error) {
-      if (error instanceof NotFoundError) throw error;
-      if (error instanceof HTTPError && error.isNotFound()) {
-        throw new NotFoundError("alpm", name);
-      }
-      throw error;
+      rethrowFetchError(error, this.ecosystem(), name);
     }
   }
 
@@ -287,8 +283,8 @@ export class AlpmRegistry extends Registry {
       homepage: result.URL || "",
       documentation: "",
       repository: "",
-      licenses: combineLicenses(result.License || []),
-      keywords: result.Keywords || [],
+      licenses: combineLicenses(result.License ?? []),
+      keywords: result.Keywords ?? [],
       namespace: "aur",
       latestVersion: result.Version,
       metadata: {
@@ -309,7 +305,7 @@ export class AlpmRegistry extends Registry {
       {
         number: result.Version,
         publishedAt: result.LastModified ? new Date(result.LastModified * 1000) : null,
-        licenses: combineLicenses(result.License || []),
+        licenses: combineLicenses(result.License ?? []),
         integrity: "",
         status: result.OutOfDate ? "deprecated" : "",
         metadata: {
@@ -329,10 +325,10 @@ export class AlpmRegistry extends Registry {
     this.assertVersionMatches(`aur/${name}`, version, result.Version);
 
     return this.buildDependencies(
-      result.Depends || [],
-      result.MakeDepends || [],
-      result.OptDepends || [],
-      result.CheckDepends || [],
+      result.Depends ?? [],
+      result.MakeDepends ?? [],
+      result.OptDepends ?? [],
+      result.CheckDepends ?? [],
     );
   }
 
@@ -353,7 +349,6 @@ export class AlpmRegistry extends Registry {
     ];
   }
 
-  /** Fetch package info from AUR RPC v5. */
   private async fetchAurInfo(name: string, signal?: AbortSignal): Promise<AurPackageResult> {
     const url = `${AUR_BASE_URL}/rpc/v5/info/${encodeURIComponent(name)}`;
 
@@ -366,17 +361,12 @@ export class AlpmRegistry extends Registry {
 
       return data.results[0]!;
     } catch (error) {
-      if (error instanceof NotFoundError) throw error;
-      if (error instanceof HTTPError && error.isNotFound()) {
-        throw new NotFoundError("alpm", `aur/${name}`);
-      }
-      throw error;
+      rethrowFetchError(error, this.ecosystem(), `aur/${name}`);
     }
   }
 
   // --- Shared helpers ---
 
-  /** Parse "namespace/name" into components. Defaults to "arch" namespace. */
   private parseName(fullName: string): { namespace: string; pkgName: string } {
     const normalized = fullName.trim().toLowerCase();
     const slashIdx = normalized.indexOf("/");
@@ -401,18 +391,18 @@ export class AlpmRegistry extends Registry {
     }
   }
 
-  /** Format ALPM version: epoch:pkgver-pkgrel (epoch omitted when 0). */
-  private formatVersion(result: ArchPackageResult): string {
+  private formatVersion(
+    result: Readonly<Pick<ArchPackageResult, "epoch" | "pkgrel" | "pkgver">>,
+  ): string {
     const epoch = result.epoch && result.epoch > 0 ? `${result.epoch}:` : "";
     return `${epoch}${result.pkgver}-${result.pkgrel}`;
   }
 
-  /** Build normalized dependency list from ALPM dependency arrays. */
   private buildDependencies(
-    depends: string[],
-    makedepends: string[],
-    optdepends: string[],
-    checkdepends: string[],
+    depends: readonly string[],
+    makedepends: readonly string[],
+    optdepends: readonly string[],
+    checkdepends: readonly string[],
   ): Dependency[] {
     const dependencies: Dependency[] = [];
 
@@ -459,7 +449,6 @@ export class AlpmRegistry extends Registry {
     return dependencies;
   }
 
-  /** Parse a dependency string like "glibc>=2.33" or "bash". */
   private parseDep(dep: string): { name: string; requirements: string } {
     const match = dep.match(/^([a-zA-Z0-9@._+-]+)(.*)$/);
     if (!match) return { name: dep, requirements: "" };
@@ -469,7 +458,6 @@ export class AlpmRegistry extends Registry {
     };
   }
 
-  /** Parse optional dependency like "perl-locale-gettext: translation support". */
   private parseOptDep(dep: string): { name: string; requirements: string; description: string } {
     const colonIdx = dep.indexOf(":");
     if (colonIdx === -1) {

@@ -1,3 +1,4 @@
+import type { Maintainer } from "../core/types.ts";
 import { defineCommand } from "citty";
 import consola from "consola";
 import { sharedArgs, resolvePURL, withErrorHandling } from "./shared.ts";
@@ -25,22 +26,34 @@ export default defineCommand({
         return;
       }
 
-      consola.log("");
-      consola.log(
-        `  \x1b[1m${name}\x1b[0m — ${maintainers.length} maintainer${maintainers.length === 1 ? "" : "s"}`,
-      );
-      consola.log("");
-
-      for (const m of maintainers) {
-        const nameStr = m.name || m.login || "unknown";
-        const parts: string[] = [nameStr];
-        if (m.login && m.login !== nameStr) parts.push(`\x1b[90m(${m.login})\x1b[0m`);
-        if (m.email) parts.push(`\x1b[90m<${m.email}>\x1b[0m`);
-        if (m.role) parts.push(`\x1b[36m[${m.role}]\x1b[0m`);
-        consola.log(`  ${parts.join(" ")}`);
-        if (m.url) consola.log(`    \x1b[90m${m.url}\x1b[0m`);
-      }
-      consola.log("");
+      outputMaintainers(name, maintainers);
     });
   },
 });
+
+function outputMaintainers(name: string, maintainers: readonly Maintainer[]): void {
+  consola.log("");
+  consola.log(
+    `  \x1B[1m${name}\x1B[0m — ${maintainers.length} maintainer${maintainers.length === 1 ? "" : "s"}`,
+  );
+  consola.log("");
+
+  for (const maintainer of maintainers) {
+    consola.log(`  ${formatMaintainer(maintainer).join(" ")}`);
+    if (maintainer.url) consola.log(`    \x1B[90m${maintainer.url}\x1B[0m`);
+  }
+  consola.log("");
+}
+
+function formatMaintainer(maintainer: Readonly<Maintainer>): string[] {
+  const displayName = maintainer.name || maintainer.login || "unknown";
+  const parts = [displayName];
+
+  if (maintainer.login && maintainer.login !== displayName) {
+    parts.push(`\x1B[90m(${maintainer.login})\x1B[0m`);
+  }
+  if (maintainer.email) parts.push(`\x1B[90m<${maintainer.email}>\x1B[0m`);
+  if (maintainer.role) parts.push(`\x1B[36m[${maintainer.role}]\x1B[0m`);
+
+  return parts;
+}

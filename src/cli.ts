@@ -17,4 +17,4 @@ const main = defineCommand({
   },
 });
 
-runMain(main);
+await runMain(main);

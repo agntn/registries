@@ -24,7 +24,9 @@ function version(
   };
 }
 
-function pkg(overrides: Partial<Package> = {}): Package {
+function pkg(
+  overrides: Readonly<Partial<Pick<Package, "documentation" | "homepage" | "name">>> = {},
+): Package {
   return {
     name: "test",
     description: "",
