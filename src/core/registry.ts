@@ -20,7 +20,13 @@ export abstract class Registry {
 const constructors = new Map<string, new (baseURL: string, client: Client) => Registry>();
 const defaults = new Map<string, string>();
 
-/** Register an ecosystem class. Called by each registry module on import. */
+/**
+ * Register an ecosystem adapter.
+ *
+ * @param ecosystem - Ecosystem key.
+ * @param defaultURL - Default registry API URL.
+ * @param RegistryClass - Adapter constructor.
+ */
 export function register(
   ecosystem: string,
   defaultURL: string,
@@ -30,7 +36,14 @@ export function register(
   defaults.set(ecosystem, defaultURL);
 }
 
-/** Create a registry instance for the given ecosystem. */
+/**
+ * Create an adapter for a registered ecosystem.
+ *
+ * @param ecosystem - Ecosystem key.
+ * @param baseURL - Optional registry API URL override.
+ * @param client - Optional HTTP client.
+ * @returns {Registry} The registry adapter.
+ */
 export function create(ecosystem: string, baseURL?: string, client?: Client): Registry {
   const RegistryClass = constructors.get(ecosystem);
   if (!RegistryClass) {
@@ -39,12 +52,21 @@ export function create(ecosystem: string, baseURL?: string, client?: Client): Re
   return new RegistryClass(baseURL || defaults.get(ecosystem)!, client ?? defaultClient());
 }
 
-/** List all registered ecosystem names. */
+/**
+ * List registered ecosystems.
+ *
+ * @returns {string[]} The ecosystem keys.
+ */
 export function ecosystems(): string[] {
   return [...constructors.keys()];
 }
 
-/** Check if an ecosystem is registered. */
+/**
+ * Check whether an ecosystem is registered.
+ *
+ * @param ecosystem - Ecosystem key.
+ * @returns {boolean} Whether an adapter is registered.
+ */
 export function has(ecosystem: string): boolean {
   return constructors.has(ecosystem);
 }

@@ -5,7 +5,6 @@ import { InvalidPURLError } from "./errors.ts";
 
 const QUALIFIER_KEY_PATTERN = /^[a-z][a-z0-9._-]*$/;
 
-/** Decode a percent-encoded PURL component, throwing InvalidPURLError on malformed sequences. */
 function decodePURLComponent(purlStr: string, value: string): string {
   try {
     return decodeURIComponent(value);
@@ -14,11 +13,54 @@ function decodePURLComponent(purlStr: string, value: string): string {
   }
 }
 
+function extractSubpath(purlStr: string, value: string): { remainder: string; subpath: string } {
+  const hashIdx = value.indexOf("#");
+  if (hashIdx === -1) return { remainder: value, subpath: "" };
+
+  const subpath = value
+    .slice(hashIdx + 1)
+    .split("/")
+    .map((segment) => decodePURLComponent(purlStr, segment))
+    .join("/");
+  return { remainder: value.slice(0, hashIdx), subpath };
+}
+
+function extractQualifiers(
+  purlStr: string,
+  value: string,
+): { qualifiers: Record<string, string>; remainder: string } {
+  const queryIdx = value.indexOf("?");
+  if (queryIdx === -1) return { qualifiers: {}, remainder: value };
+
+  const qualifiers: Record<string, string> = {};
+  for (const pair of value.slice(queryIdx + 1).split("&")) {
+    const eqIdx = pair.indexOf("=");
+    if (eqIdx !== -1) {
+      qualifiers[decodePURLComponent(purlStr, pair.slice(0, eqIdx))] = decodePURLComponent(
+        purlStr,
+        pair.slice(eqIdx + 1),
+      );
+    }
+  }
+  return { qualifiers, remainder: value.slice(0, queryIdx) };
+}
+
+function extractVersion(purlStr: string, value: string): { remainder: string; version: string } {
+  const lastSlashIdx = value.lastIndexOf("/");
+  const lastAtIdx = value.lastIndexOf("@");
+  if (lastAtIdx === -1 || lastAtIdx <= lastSlashIdx) return { remainder: value, version: "" };
+
+  return {
+    remainder: value.slice(0, lastAtIdx),
+    version: decodePURLComponent(purlStr, value.slice(lastAtIdx + 1)),
+  };
+}
+
 /**
- * Parse a PURL string into its components.
+ * Parse a package URL into normalized components.
  *
- * Format: `pkg:<type>/<namespace>/<name>@<version>?<qualifiers>#<subpath>`
- *
+ * @param purlStr - Package URL to parse.
+ * @returns {ParsedPURL} The normalized components.
  * @see https://github.com/package-url/purl-spec (ECMA-427)
  */
 export function parsePURL(purlStr: string): ParsedPURL {
@@ -26,47 +68,10 @@ export function parsePURL(purlStr: string): ParsedPURL {
     throw new InvalidPURLError(purlStr, 'must start with "pkg:"');
   }
 
-  let remainder = purlStr.slice(4); // strip 'pkg:'
-
-  // Extract subpath
-  let subpath = "";
-  const hashIdx = remainder.indexOf("#");
-  if (hashIdx !== -1) {
-    subpath = remainder
-      .slice(hashIdx + 1)
-      .split("/")
-      .map((s) => decodePURLComponent(purlStr, s))
-      .join("/");
-    remainder = remainder.slice(0, hashIdx);
-  }
-
-  // Extract qualifiers
-  const qualifiers: Record<string, string> = {};
-  const queryIdx = remainder.indexOf("?");
-  if (queryIdx !== -1) {
-    const queryStr = remainder.slice(queryIdx + 1);
-    remainder = remainder.slice(0, queryIdx);
-    for (const pair of queryStr.split("&")) {
-      const eqIdx = pair.indexOf("=");
-      if (eqIdx !== -1) {
-        qualifiers[decodePURLComponent(purlStr, pair.slice(0, eqIdx))] = decodePURLComponent(
-          purlStr,
-          pair.slice(eqIdx + 1),
-        );
-      }
-    }
-  }
-
-  // Extract version — the version separator is the last '@' that appears
-  // after the last '/', so scoped names like 'npm/@vue/core' are not mistaken
-  // for having a version.
-  let version = "";
-  const lastSlashBeforeVersion = remainder.lastIndexOf("/");
-  const lastAtIdx = remainder.lastIndexOf("@");
-  if (lastAtIdx !== -1 && lastAtIdx > lastSlashBeforeVersion) {
-    version = decodePURLComponent(purlStr, remainder.slice(lastAtIdx + 1));
-    remainder = remainder.slice(0, lastAtIdx);
-  }
+  const subpathParts = extractSubpath(purlStr, purlStr.slice(4));
+  const qualifierParts = extractQualifiers(purlStr, subpathParts.remainder);
+  const versionParts = extractVersion(purlStr, qualifierParts.remainder);
+  const remainder = versionParts.remainder;
 
   // Extract type
   const slashIdx = remainder.indexOf("/");
@@ -102,17 +107,29 @@ export function parsePURL(purlStr: string): ParsedPURL {
 
   // Ecosystem-specific normalization per PURL spec
   if (type === "pypi") {
-    name = name.toLowerCase().replace(/[-_.]+/g, "-");
+    name = name.toLowerCase().replaceAll(/[-_.]+/g, "-");
   }
 
   if (type === "alpm") {
     name = name.toLowerCase();
   }
 
-  return { type, namespace, name, version, qualifiers, subpath };
+  return {
+    type,
+    namespace,
+    name,
+    version: versionParts.version,
+    qualifiers: qualifierParts.qualifiers,
+    subpath: subpathParts.subpath,
+  };
 }
 
-/** Build the full name from namespace + name (e.g., "@scope/pkg" for npm). */
+/**
+ * Build a registry package name from PURL components.
+ *
+ * @param parsed - Parsed package URL components.
+ * @returns {string} The namespace-qualified package name.
+ */
 export function fullName(parsed: ParsedPURL): string {
   if (parsed.namespace) {
     return `${parsed.namespace}/${parsed.name}`;
@@ -120,7 +137,13 @@ export function fullName(parsed: ParsedPURL): string {
   return parsed.name;
 }
 
-/** Create a registry instance from a PURL, returning [registry, name, version]. */
+/**
+ * Create a registry from a package URL.
+ *
+ * @param purlStr - Package URL to resolve.
+ * @param client - Optional HTTP client.
+ * @returns {[Registry, string, string]} The registry, package name, and version.
+ */
 export function createFromPURL(purlStr: string, client?: Client): [Registry, string, string] {
   const parsed = parsePURL(purlStr);
   const baseURL = parsed.qualifiers["repository_url"] ?? "";
@@ -128,15 +151,22 @@ export function createFromPURL(purlStr: string, client?: Client): [Registry, str
   return [reg, fullName(parsed), parsed.version];
 }
 
-/** Build a PURL string from components. Inverse of `parsePURL`. */
-export function buildPURL(parts: {
-  type: string;
-  name: string;
-  version?: string;
-  namespace?: string;
-  qualifiers?: Record<string, string>;
-  subpath?: string;
-}): string {
+/**
+ * Build a package URL from normalized components.
+ *
+ * @param parts - Package URL components.
+ * @returns {string} The canonical package URL.
+ */
+export function buildPURL(
+  parts: Readonly<{
+    type: string;
+    name: string;
+    version?: string;
+    namespace?: string;
+    qualifiers?: Readonly<Record<string, string>>;
+    subpath?: string;
+  }>,
+): string {
   let purl = `pkg:${parts.type}/`;
   if (parts.namespace) {
     purl += `${parts.namespace

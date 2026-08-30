@@ -9,6 +9,10 @@ const DEFAULT_TIMEOUT = 30_000;
 const DEFAULT_USER_AGENT = "registries/0.1.0";
 const MAX_TIMER_DELAY = 2_147_483_647;
 
+function retryCount(value: unknown): number {
+  return typeof value === "number" ? value : 0;
+}
+
 function parseRetryAfterValue(header: string | null | undefined): number | undefined {
   if (!header) return undefined;
   const trimmed = header.trim();
@@ -27,19 +31,22 @@ function parseRetryAfterValue(header: string | null | undefined): number | undef
 }
 
 /**
- * Parse a `Retry-After` header into seconds.
+ * Parse a Retry-After header into seconds, defaulting to 60.
  *
- * Handles two formats (RFC 7231 §7.1.3):
- * - **Numeric**: `"120"` → 120
- * - **HTTP-date**: `"Wed, 21 Oct 2025 07:28:00 GMT"` → seconds until that time
- *
- * Returns 60 when the header is absent, empty, or unparseable.
+ * @param header - Numeric seconds or an HTTP date.
+ * @returns {number} The retry delay in seconds.
  */
 export function parseRetryAfter(header: string | null | undefined): number {
   return parseRetryAfterValue(header) ?? 60;
 }
 
-/** Apply a valid, timer-safe `Retry-After` value or reject an unschedulable delay. */
+/**
+ * Apply a valid Retry-After value or reject an unschedulable delay.
+ *
+ * @param header - Numeric seconds or an HTTP date.
+ * @param fallbackDelay - Delay in milliseconds used without a valid header.
+ * @returns {number} A timer-safe delay in milliseconds.
+ */
 export function retryDelayFor(header: string | null | undefined, fallbackDelay: number): number {
   const retryAfter = parseRetryAfterValue(header);
   if (retryAfter === undefined) return fallbackDelay;
@@ -73,7 +80,7 @@ export class Client {
     this.fetch = ofetch.create({
       retry: this.maxRetries,
       retryDelay(context) {
-        const remaining = typeof context.options.retry === "number" ? context.options.retry : 0;
+        const remaining = retryCount(context.options.retry);
         const attempt = maxRetries - remaining;
         const delay = baseDelay * Math.pow(2, attempt - 1);
         const jitteredDelay = delay + delay * Math.random() * 0.1;
@@ -82,7 +89,9 @@ export class Client {
           return retryDelayFor(retryAfter, jitteredDelay);
         } catch (error) {
           if (error instanceof RateLimitError && context.response?.status !== 429) {
-            throw new HTTPError(context.response?.status ?? 0, String(context.request), "");
+            const requestURL =
+              typeof context.request === "string" ? context.request : context.request.url;
+            throw new HTTPError(context.response?.status ?? 0, requestURL, "");
           }
           throw error;
         }
@@ -96,11 +105,18 @@ export class Client {
     });
   }
 
-  /** Fetch JSON from a URL with retry and rate limiting. */
+  /**
+   * Fetch JSON with retry and rate limiting.
+   *
+   * @param url - Request URL.
+   * @param signal - Optional cancellation signal.
+   * @param headers - Optional request headers.
+   * @returns {Promise<T>} The decoded response body.
+   */
   async getJSON<T>(
     url: string,
     signal?: AbortSignal,
-    headers?: Record<string, string>,
+    headers?: Readonly<Record<string, string>>,
   ): Promise<T> {
     if (this.rateLimiter) {
       await this.rateLimiter.wait(signal);
@@ -125,10 +141,12 @@ export class Client {
 
 let _defaultClient: Client | undefined;
 
-/** Get or create the shared default client. */
+/**
+ * Get or create the shared HTTP client.
+ *
+ * @returns {Client} The shared client.
+ */
 export function defaultClient(): Client {
-  if (!_defaultClient) {
-    _defaultClient = new Client();
-  }
+  _defaultClient ??= new Client();
   return _defaultClient;
 }

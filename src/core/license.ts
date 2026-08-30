@@ -1,8 +1,8 @@
 /**
- * Normalize a license string to SPDX expression.
+ * Normalize common license names to SPDX expressions.
  *
- * Handles common variations: "MIT License" → "MIT", "Apache 2.0" → "Apache-2.0".
- * Passes through already-valid SPDX identifiers unchanged.
+ * @param raw - License name or SPDX expression.
+ * @returns {string} The normalized SPDX expression, or an empty string.
  */
 export function normalizeLicense(raw: string | null | undefined): string {
   if (!raw) return "";
@@ -56,13 +56,14 @@ const LICENSE_MAP = new Map<string, string>([
 ]);
 
 /**
- * Combine multiple license strings into a single SPDX expression.
+ * Combine license strings into one SPDX expression.
  *
- * Default operator is OR (disjunctive, user picks one).
- * Pass "AND" for ecosystems where multiple licenses mean all apply (e.g. Arch Linux).
+ * @param licenses - License names or expressions to normalize.
+ * @param operator - SPDX operator joining multiple licenses.
+ * @returns {string} The combined SPDX expression, or an empty string.
  */
 export function combineLicenses(
-  licenses: (string | null | undefined)[],
+  licenses: readonly (string | null | undefined)[],
   operator: "OR" | "AND" = "OR",
 ): string {
   const normalized = licenses.map((l) => normalizeLicense(l)).filter(Boolean);

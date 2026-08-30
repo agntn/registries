@@ -9,32 +9,40 @@ export function outputPackageInfo(pkg: Package, name: string, reg: Registry): vo
   const urls = reg.urls();
   const registryUrl = urls.registry(name);
   const docsUrl = resolveDocsUrl(pkg, urls, pkg.latestVersion || undefined);
-  const showDocs =
-    Boolean(docsUrl) &&
-    docsUrl !== pkg.homepage &&
-    docsUrl !== pkg.repository &&
-    docsUrl !== registryUrl;
+  const showDocs = shouldShowDocs(docsUrl, pkg, registryUrl);
 
   consola.log("");
   consola.log(
-    `  \x1b[1m\x1b[36m${pkg.name}\x1b[0m${pkg.latestVersion ? `\x1b[90m@${pkg.latestVersion}\x1b[0m` : ""}`,
+    `  \x1B[1m\x1B[36m${pkg.name}\x1B[0m${pkg.latestVersion ? `\x1B[90m@${pkg.latestVersion}\x1B[0m` : ""}`,
   );
   if (pkg.description) {
     consola.log(`  ${pkg.description}`);
   }
   consola.log("");
 
-  if (pkg.licenses) consola.log(`  \x1b[90mLicense:\x1b[0m    ${pkg.licenses}`);
-  if (pkg.repository) consola.log(`  \x1b[90mRepository:\x1b[0m ${pkg.repository}`);
-  if (pkg.homepage) consola.log(`  \x1b[90mHomepage:\x1b[0m   ${pkg.homepage}`);
-  if (showDocs) consola.log(`  \x1b[90mDocs:\x1b[0m       ${docsUrl}`);
-  consola.log(`  \x1b[90mRegistry:\x1b[0m   ${registryUrl}`);
-  if (pkg.keywords.length > 0) {
-    consola.log(`  \x1b[90mKeywords:\x1b[0m   ${pkg.keywords.join(", ")}`);
+  const rows = [
+    ["License:", "    ", pkg.licenses, Boolean(pkg.licenses)],
+    ["Repository:", " ", pkg.repository, Boolean(pkg.repository)],
+    ["Homepage:", "   ", pkg.homepage, Boolean(pkg.homepage)],
+    ["Docs:", "       ", docsUrl, showDocs],
+    ["Registry:", "   ", registryUrl, true],
+    ["Keywords:", "   ", pkg.keywords.join(", "), pkg.keywords.length > 0],
+    ["Namespace:", "  ", pkg.namespace, Boolean(pkg.namespace)],
+    ["Ecosystem:", "  ", reg.ecosystem(), true],
+  ] as const;
+
+  for (const [label, spacing, value, visible] of rows) {
+    if (visible) consola.log(`  \x1B[90m${label}\x1B[0m${spacing}${value}`);
   }
-  if (pkg.namespace) consola.log(`  \x1b[90mNamespace:\x1b[0m  ${pkg.namespace}`);
-  consola.log(`  \x1b[90mEcosystem:\x1b[0m  ${reg.ecosystem()}`);
   consola.log("");
+}
+
+function shouldShowDocs(
+  docsUrl: string,
+  pkg: Readonly<Pick<Package, "homepage" | "repository">>,
+  registryUrl: string,
+): boolean {
+  return Boolean(docsUrl) && ![pkg.homepage, pkg.repository, registryUrl].includes(docsUrl);
 }
 
 export default defineCommand({

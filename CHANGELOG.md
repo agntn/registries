@@ -16,11 +16,11 @@
 
 ### 💅 Refactors
 
-- ⚠️  Replace registry factories with classes ([#59](https://github.com/agntn/registries/pull/59))
+- ⚠️ Replace registry factories with classes ([#59](https://github.com/agntn/registries/pull/59))
 
 ### 🏡 Chore
 
-- ⚠️  Rebrand as @agntn/registries ([#60](https://github.com/agntn/registries/pull/60))
+- ⚠️ Rebrand as @agntn/registries ([#60](https://github.com/agntn/registries/pull/60))
 - Update packagerManager version ([8719073](https://github.com/agntn/registries/commit/8719073))
 - Update version ([43b02af](https://github.com/agntn/registries/commit/43b02af))
 
@@ -30,8 +30,8 @@
 
 #### ⚠️ Breaking Changes
 
-- ⚠️  Replace registry factories with classes ([#59](https://github.com/agntn/registries/pull/59))
-- ⚠️  Rebrand as @agntn/registries ([#60](https://github.com/agntn/registries/pull/60))
+- ⚠️ Replace registry factories with classes ([#59](https://github.com/agntn/registries/pull/59))
+- ⚠️ Rebrand as @agntn/registries ([#60](https://github.com/agntn/registries/pull/60))
 
 ### ❤️ Contributors
 

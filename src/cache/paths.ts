@@ -4,10 +4,9 @@ import { join } from "node:path";
 const APP_NAME = "registries";
 
 /**
- * Resolve the cache directory following platform conventions:
- * - Linux: $XDG_CACHE_HOME/registries or ~/.cache/registries
- * - macOS: ~/Library/Caches/registries
- * - Windows: %LOCALAPPDATA%/registries/cache
+ * Resolve the cache directory using the current platform convention.
+ *
+ * @returns {string} The absolute cache directory path.
  */
 export function getCacheDir(): string {
   // Explicit override always wins

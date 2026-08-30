@@ -3,7 +3,7 @@ import consola from "consola";
 import type { Version } from "../core/types.ts";
 
 import { sharedArgs, resolvePURL, withErrorHandling } from "./shared.ts";
-export function selectRecentVersions(versions: Version[], limit: number): Version[] {
+export function selectRecentVersions(versions: readonly Version[], limit: number): Version[] {
   return versions
     .toSorted((a, b) => {
       if (a.publishedAt === null) return b.publishedAt === null ? 0 : 1;
@@ -46,21 +46,21 @@ export default defineCommand({
 
       consola.log("");
       consola.log(
-        `  \x1b[1m${name}\x1b[0m — ${versions.length} version${versions.length === 1 ? "" : "s"}`,
+        `  \x1B[1m${name}\x1B[0m — ${versions.length} version${versions.length === 1 ? "" : "s"}`,
       );
       consola.log("");
 
       for (const v of shown) {
-        const status = v.status ? ` \x1b[33m[${v.status}]\x1b[0m` : "";
+        const status = v.status ? ` \x1B[33m[${v.status}]\x1B[0m` : "";
         const date = v.publishedAt
-          ? `  \x1b[90m${v.publishedAt.toISOString().slice(0, 10)}\x1b[0m`
+          ? `  \x1B[90m${v.publishedAt.toISOString().slice(0, 10)}\x1B[0m`
           : "";
         consola.log(`  ${v.number}${status}${date}`);
       }
 
       if (versions.length > limit) {
         consola.log(
-          `\n  \x1b[90m... and ${versions.length - limit} more (use --limit to show more)\x1b[0m`,
+          `\n  \x1B[90m... and ${versions.length - limit} more (use --limit to show more)\x1B[0m`,
         );
       }
       consola.log("");

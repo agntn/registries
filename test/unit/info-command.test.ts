@@ -3,7 +3,16 @@ import type { Package } from "../../src/core/types.ts";
 import type { Registry } from "../../src/core/registry.ts";
 import { outputPackageInfo } from "../../src/commands/info.ts";
 
-function createPackage(overrides: Partial<Package> = {}): Package {
+function createPackage(
+  overrides: Readonly<
+    Partial<
+      Pick<
+        Package,
+        "documentation" | "homepage" | "latestVersion" | "licenses" | "name" | "repository"
+      >
+    >
+  > = {},
+): Package {
   return {
     name: "serde",
     description: "Serialization framework",
@@ -36,8 +45,8 @@ function createRegistry(registryUrl: string, docsUrl: string): Registry {
   };
 }
 
-function loggedLines(log: ReturnType<typeof vi.spyOn>): string[] {
-  return log.mock.calls.map(([message]) => String(message));
+function loggedLines(calls: readonly (readonly unknown[])[]): string[] {
+  return calls.map(([message]) => String(message));
 }
 
 describe("outputPackageInfo", () => {
@@ -59,7 +68,9 @@ describe("outputPackageInfo", () => {
       createRegistry("https://crates.io/crates/serde", "https://docs.rs/serde/1.0.220"),
     );
 
-    expect(loggedLines(log)).toContain("  \x1b[90mDocs:\x1b[0m       https://docs.rs/serde");
+    expect(loggedLines(log.mock.calls)).toContain(
+      "  \x1B[90mDocs:\x1B[0m       https://docs.rs/serde",
+    );
   });
 
   it("skips docs when the resolved url falls back to homepage", () => {
@@ -76,7 +87,7 @@ describe("outputPackageInfo", () => {
       createRegistry("https://pypi.org/project/requests", "https://pypi.org/project/requests"),
     );
 
-    expect(loggedLines(log).some((line) => line.includes("Docs:"))).toBe(false);
+    expect(loggedLines(log.mock.calls).some((line) => line.includes("Docs:"))).toBe(false);
   });
 
   it("skips docs when the fallback matches the registry page", () => {
@@ -96,7 +107,7 @@ describe("outputPackageInfo", () => {
       ),
     );
 
-    expect(loggedLines(log).some((line) => line.includes("Docs:"))).toBe(false);
+    expect(loggedLines(log.mock.calls).some((line) => line.includes("Docs:"))).toBe(false);
   });
 
   it("skips docs when documentation matches repository", () => {
@@ -112,6 +123,6 @@ describe("outputPackageInfo", () => {
       createRegistry("https://crates.io/crates/serde", "https://docs.rs/serde/1.0.220"),
     );
 
-    expect(loggedLines(log).some((line) => line.includes("Docs:"))).toBe(false);
+    expect(loggedLines(log.mock.calls).some((line) => line.includes("Docs:"))).toBe(false);
   });
 });

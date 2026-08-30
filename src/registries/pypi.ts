@@ -1,10 +1,10 @@
 import type { Client } from "../core/client.ts";
 import type { Dependency, Maintainer, Package, URLBuilder, Version } from "../core/types.ts";
 import { Registry, register } from "../core/registry.ts";
-import { HTTPError, NotFoundError } from "../core/errors.ts";
 import { normalizeLicense } from "../core/license.ts";
 import { normalizeRepositoryURL } from "../core/repository.ts";
 import { buildPURL } from "../core/purl.ts";
+import { rethrowFetchError } from "./error.ts";
 
 const PYPI_FILENAME_SEPARATORS = ["_", "-", "."] as const;
 
@@ -46,12 +46,12 @@ interface PyPISimpleResponse {
 
 /** A single file entry in the Simple API response. */
 interface PyPISimpleFile {
-  filename: string;
-  url: string;
-  hashes: { sha256?: string };
-  "requires-python"?: string;
-  yanked?: string | false;
-  "upload-time"?: string;
+  readonly filename: string;
+  readonly url: string;
+  readonly hashes: Readonly<{ sha256?: string }>;
+  readonly "requires-python"?: string;
+  readonly yanked?: string | false;
+  readonly "upload-time"?: string;
 }
 
 /** PyPI registry client. */
@@ -96,10 +96,7 @@ export class PyPIRegistry extends Registry {
         metadata: {},
       };
     } catch (error) {
-      if (error instanceof HTTPError && error.isNotFound()) {
-        throw new NotFoundError("pypi", name);
-      }
-      throw error;
+      rethrowFetchError(error, this.ecosystem(), name);
     }
   }
 
@@ -112,56 +109,12 @@ export class PyPIRegistry extends Registry {
         Accept: "application/vnd.pypi.simple.v1+json",
       });
 
-      const filesByVersion = new Map<string, PyPISimpleFile[]>();
-      for (const version of data.versions) {
-        filesByVersion.set(version, []);
-      }
-
-      for (const file of data.files) {
-        const version = this.matchFileVersion(file.filename, normalized, data.versions);
-        if (version) {
-          filesByVersion.get(version)!.push(file);
-        }
-      }
-
-      const versions: Version[] = [];
-      for (const [versionStr, files] of filesByVersion) {
-        if (files.length === 0) {
-          versions.push({
-            number: versionStr,
-            publishedAt: null,
-            licenses: "",
-            integrity: "",
-            status: "",
-            metadata: {},
-          });
-          continue;
-        }
-
-        const sdist = files.find((f) => f.filename.endsWith(".tar.gz"));
-        const file = sdist ?? files[0]!;
-        const publishedAt = file["upload-time"] ? new Date(file["upload-time"]) : null;
-        const integrity = file.hashes?.sha256 ? `sha256-${file.hashes.sha256}` : "";
-        const status = file.yanked ? "yanked" : "";
-
-        this.downloadUrls.set(`${normalized}@${versionStr}`, file.url);
-
-        versions.push({
-          number: versionStr,
-          publishedAt,
-          licenses: "",
-          integrity,
-          status,
-          metadata: {},
-        });
-      }
-
-      return versions;
+      const filesByVersion = this.indexFilesByVersion(normalized, data.versions, data.files);
+      return [...filesByVersion].map(([version, files]) =>
+        this.toVersion(normalized, version, files),
+      );
     } catch (error) {
-      if (error instanceof HTTPError && error.isNotFound()) {
-        throw new NotFoundError("pypi", name);
-      }
-      throw error;
+      rethrowFetchError(error, this.ecosystem(), name);
     }
   }
 
@@ -188,10 +141,7 @@ export class PyPIRegistry extends Registry {
 
       return dependencies;
     } catch (error) {
-      if (error instanceof HTTPError && error.isNotFound()) {
-        throw new NotFoundError("pypi", name, version);
-      }
-      throw error;
+      rethrowFetchError(error, this.ecosystem(), name, version);
     }
   }
 
@@ -216,10 +166,7 @@ export class PyPIRegistry extends Registry {
 
       return maintainers;
     } catch (error) {
-      if (error instanceof HTTPError && error.isNotFound()) {
-        throw new NotFoundError("pypi", name);
-      }
-      throw error;
+      rethrowFetchError(error, this.ecosystem(), name);
     }
   }
 
@@ -253,11 +200,60 @@ export class PyPIRegistry extends Registry {
     };
   }
 
-  /** Match a filename to a version from the known versions list. */
+  private indexFilesByVersion(
+    normalizedName: string,
+    versions: readonly string[],
+    files: readonly PyPISimpleFile[],
+  ): Map<string, PyPISimpleFile[]> {
+    const filesByVersion = new Map<string, PyPISimpleFile[]>();
+
+    for (const version of versions) filesByVersion.set(version, []);
+    for (const file of files) {
+      const version = this.matchFileVersion(file.filename, normalizedName, versions);
+      if (version) filesByVersion.get(version)!.push(file);
+    }
+
+    return filesByVersion;
+  }
+
+  private toVersion(
+    normalizedName: string,
+    version: string,
+    files: readonly PyPISimpleFile[],
+  ): Version {
+    if (files.length === 0) {
+      return {
+        number: version,
+        publishedAt: null,
+        licenses: "",
+        integrity: "",
+        status: "",
+        metadata: {},
+      };
+    }
+
+    const sdist = files.find((file) => file.filename.endsWith(".tar.gz"));
+    const file = sdist ?? files[0]!;
+    const publishedAt = file["upload-time"] ? new Date(file["upload-time"]) : null;
+    const integrity = file.hashes?.sha256 ? `sha256-${file.hashes.sha256}` : "";
+    const status = file.yanked ? "yanked" : "";
+
+    this.downloadUrls.set(`${normalizedName}@${version}`, file.url);
+
+    return {
+      number: version,
+      publishedAt,
+      licenses: "",
+      integrity,
+      status,
+      metadata: {},
+    };
+  }
+
   private matchFileVersion(
     filename: string,
     normalizedName: string,
-    versions: string[],
+    versions: readonly string[],
   ): string | undefined {
     const lower = filename.toLowerCase();
     let prefix: string | undefined;
@@ -289,13 +285,11 @@ export class PyPIRegistry extends Registry {
     return undefined;
   }
 
-  /** Normalize package name per PEP 503. */
   private normalizeName(name: string): string {
-    return name.toLowerCase().replace(/[-_.]+/g, "-");
+    return name.toLowerCase().replaceAll(/[-_.]+/g, "-");
   }
 
-  /** Extract repository URL from project_urls. */
-  private extractRepository(projectUrls: Record<string, string> | undefined): string {
+  private extractRepository(projectUrls: Readonly<Record<string, string>> | undefined): string {
     const url = this.findProjectUrl(projectUrls, [
       "Repository",
       "Source",
@@ -306,8 +300,10 @@ export class PyPIRegistry extends Registry {
     return normalizeRepositoryURL(url);
   }
 
-  /** Find a project URL by key, case-insensitive. */
-  private findProjectUrl(projectUrls: Record<string, string> | undefined, keys: string[]): string {
+  private findProjectUrl(
+    projectUrls: Readonly<Record<string, string>> | undefined,
+    keys: readonly string[],
+  ): string {
     if (!projectUrls) return "";
 
     const lowered = new Map<string, string>();
@@ -323,7 +319,6 @@ export class PyPIRegistry extends Registry {
     return "";
   }
 
-  /** Parse comma-separated keywords. */
   private parseKeywords(keywords: string | undefined): string[] {
     if (!keywords) return [];
     return keywords
@@ -332,7 +327,20 @@ export class PyPIRegistry extends Registry {
       .filter(Boolean);
   }
 
-  /** Parse PEP 508 dependency string into a normalized Dependency. */
+  private parseExtraMarker(marker: string): Pick<Dependency, "optional" | "scope"> {
+    const extraMatch = marker.match(/extra\s*==\s*["']([^"']+)["']/);
+    if (!extraMatch) return { scope: "runtime", optional: false };
+
+    const extraName = extraMatch[1]!.toLowerCase();
+    if (/^dev(elop(ment)?)?$/.test(extraName)) {
+      return { scope: "development", optional: true };
+    }
+    if (/^test(s|ing)?$/.test(extraName)) {
+      return { scope: "test", optional: true };
+    }
+    return { scope: "runtime", optional: true };
+  }
+
   private parsePEP508(depStr: string): Dependency | null {
     // PEP 508 format: name [extras] (version_spec) ; markers
     const semiIdx = depStr.indexOf(";");
@@ -351,28 +359,13 @@ export class PyPIRegistry extends Registry {
       versionSpec = versionSpec.slice(1, -1).trim();
     }
 
-    // Only `extra == "..."` markers affect scope. Platform markers don't.
-    let scope: "runtime" | "development" | "test" | "build" | "optional" = "runtime";
-    let optional = false;
-
-    if (markerStr) {
-      const extraMatch = markerStr.match(/extra\s*==\s*["']([^"']+)["']/);
-      if (extraMatch) {
-        optional = true;
-        const extraName = extraMatch[1]!.toLowerCase();
-        if (/^dev(elop(ment)?)?$/.test(extraName)) {
-          scope = "development";
-        } else if (/^test(s|ing)?$/.test(extraName)) {
-          scope = "test";
-        }
-      }
-    }
+    const marker = this.parseExtraMarker(markerStr);
 
     return {
       name: this.normalizeName(depName),
       requirements: versionSpec,
-      scope,
-      optional,
+      scope: marker.scope,
+      optional: marker.optional,
     };
   }
 }

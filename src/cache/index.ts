@@ -38,7 +38,13 @@ export interface CreateCachedOptions {
   storage?: Storage;
 }
 
-/** Create a registry instance with caching + lockfile tracking. */
+/**
+ * Create a registry with cache and lockfile tracking.
+ *
+ * @param ecosystem - Registry ecosystem key.
+ * @param options - Optional registry, client, and storage overrides.
+ * @returns {Registry} A cached registry instance.
+ */
 export function createCached(ecosystem: string, options?: CreateCachedOptions): Registry {
   const inner = create(ecosystem, options?.baseURL, options?.client);
   return new CachedRegistry(inner, options?.storage);

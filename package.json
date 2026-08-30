@@ -62,7 +62,7 @@
     "dev:prepare": "obuild --stub",
     "fmt": "oxlint . --fix && oxfmt .",
     "lint": "oxlint . && oxfmt --check .",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc -p test/tsconfig.json --noEmit",
     "test": "vitest",
     "test:run": "vitest run",
     "prepack": "pnpm run build",
@@ -75,12 +75,14 @@
     "unstorage": "^1.17.4"
   },
   "devDependencies": {
+    "@agntn/ox": "^0.1.0",
     "@types/node": "^25.3.0",
     "ai": "^6.0.116",
     "changelogen": "^0.6.2",
     "obuild": "^0.4.31",
-    "oxfmt": "^0.36.0",
-    "oxlint": "^1.51.0",
+    "oxfmt": "^0.65.0",
+    "oxlint": "^1.80.0",
+    "oxlint-tsgolint": "^7.0.2001",
     "typescript": "^5.8.3",
     "vitest": "^4.0.0",
     "zod": "^4.3.6"

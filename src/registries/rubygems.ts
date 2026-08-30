@@ -1,10 +1,10 @@
 import type { Client } from "../core/client.ts";
 import type { Dependency, Maintainer, Package, URLBuilder, Version } from "../core/types.ts";
 import { Registry, register } from "../core/registry.ts";
-import { HTTPError, NotFoundError } from "../core/errors.ts";
 import { combineLicenses, normalizeLicense } from "../core/license.ts";
 import { normalizeRepositoryURL } from "../core/repository.ts";
 import { buildPURL } from "../core/purl.ts";
+import { rethrowFetchError } from "./error.ts";
 
 /** RubyGems API response for a single gem. */
 interface RubyGemsGemResponse {
@@ -42,6 +42,25 @@ interface RubyGemsOwnerResponse {
   email?: string;
 }
 
+function orEmpty(value: string | undefined): string {
+  return value || "";
+}
+
+function gemLicenses(licenses: readonly string[] | undefined): string {
+  return licenses ? combineLicenses(licenses.map((license) => normalizeLicense(license))) : "";
+}
+
+function gemRepositoryURL(
+  sourceCodeURI: string | undefined,
+  metadata: Readonly<Record<string, unknown>> | undefined,
+  homepageURI: string | undefined,
+): string {
+  const metadataURI = metadata?.["source_code_uri"];
+  if (sourceCodeURI) return normalizeRepositoryURL(sourceCodeURI);
+  if (metadataURI) return normalizeRepositoryURL(metadataURI);
+  return normalizeRepositoryURL(homepageURI ?? "");
+}
+
 /** RubyGems registry client. */
 export class RubyGemsRegistry extends Registry {
   constructor(baseURL: string, client: Client) {
@@ -63,36 +82,23 @@ export class RubyGemsRegistry extends Registry {
     try {
       const data = await this.client.getJSON<RubyGemsGemResponse>(url, signal);
 
-      // Extract licenses
-      const licenses = data.licenses
-        ? combineLicenses(data.licenses.map((l) => normalizeLicense(l)))
-        : "";
-
-      // Extract repository URL
-      const repository = normalizeRepositoryURL(
-        data.source_code_uri ||
-          (data.metadata?.source_code_uri as string) ||
-          data.homepage_uri ||
-          "",
-      );
+      const licenses = gemLicenses(data.licenses);
+      const repository = gemRepositoryURL(data.source_code_uri, data.metadata, data.homepage_uri);
 
       return {
         name: data.name,
-        description: data.description || "",
-        homepage: data.homepage_uri || "",
-        documentation: data.documentation_uri || "",
+        description: orEmpty(data.description),
+        homepage: orEmpty(data.homepage_uri),
+        documentation: orEmpty(data.documentation_uri),
         repository,
         licenses,
         keywords: [],
         namespace: "",
-        latestVersion: data.version || "",
-        metadata: data.metadata || {},
+        latestVersion: orEmpty(data.version),
+        metadata: data.metadata ?? {},
       };
     } catch (error) {
-      if (error instanceof HTTPError && error.isNotFound()) {
-        throw new NotFoundError("gem", name);
-      }
-      throw error;
+      rethrowFetchError(error, this.ecosystem(), name);
     }
   }
 
@@ -119,10 +125,7 @@ export class RubyGemsRegistry extends Registry {
 
       return versions;
     } catch (error) {
-      if (error instanceof HTTPError && error.isNotFound()) {
-        throw new NotFoundError("gem", name);
-      }
-      throw error;
+      rethrowFetchError(error, this.ecosystem(), name);
     }
   }
 
@@ -163,10 +166,7 @@ export class RubyGemsRegistry extends Registry {
 
       return dependencies;
     } catch (error) {
-      if (error instanceof HTTPError && error.isNotFound()) {
-        throw new NotFoundError("gem", name, version);
-      }
-      throw error;
+      rethrowFetchError(error, this.ecosystem(), name, version);
     }
   }
 
@@ -190,10 +190,7 @@ export class RubyGemsRegistry extends Registry {
 
       return maintainers;
     } catch (error) {
-      if (error instanceof HTTPError && error.isNotFound()) {
-        throw new NotFoundError("gem", name);
-      }
-      throw error;
+      rethrowFetchError(error, this.ecosystem(), name);
     }
   }
 

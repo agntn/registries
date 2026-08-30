@@ -1,10 +1,11 @@
 import type { Client } from "../core/client.ts";
 import type { Dependency, Maintainer, Package, URLBuilder, Version } from "../core/types.ts";
 import { Registry, register } from "../core/registry.ts";
-import { HTTPError, NotFoundError, InvalidPURLError } from "../core/errors.ts";
+import { NotFoundError, InvalidPURLError } from "../core/errors.ts";
 import { combineLicenses } from "../core/license.ts";
 import { normalizeRepositoryURL } from "../core/repository.ts";
 import { buildPURL } from "../core/purl.ts";
+import { rethrowFetchError } from "./error.ts";
 
 /** Packagist API response for a single package. */
 interface PackagistPackageResponse {
@@ -17,18 +18,20 @@ interface PackagistPackageResponse {
   };
 }
 
+interface PackagistAuthor {
+  readonly name?: string;
+  readonly email?: string;
+  readonly homepage?: string;
+  readonly role?: string;
+}
+
 /** Packagist version data. */
 interface PackagistVersion {
   name: string;
   version: string;
   license?: string | string[];
   keywords?: string[];
-  authors?: Array<{
-    name?: string;
-    email?: string;
-    homepage?: string;
-    role?: string;
-  }>;
+  authors?: readonly PackagistAuthor[];
   require?: Record<string, string>;
   "require-dev"?: Record<string, string>;
   source?: {
@@ -82,19 +85,16 @@ export class PackagistRegistry extends Registry {
         homepage: "",
         documentation: "",
         repository: normalizeRepositoryURL(
-          packageData.repository || latestVersionData.source?.url || "",
+          packageData.repository ? packageData.repository : (latestVersionData.source?.url ?? ""),
         ),
         licenses,
-        keywords: packageData.keywords || [],
+        keywords: packageData.keywords ?? [],
         namespace: vendor,
         latestVersion,
         metadata: {},
       };
     } catch (error) {
-      if (error instanceof HTTPError && error.isNotFound()) {
-        throw new NotFoundError("composer", name);
-      }
-      throw error;
+      rethrowFetchError(error, this.ecosystem(), name);
     }
   }
 
@@ -122,10 +122,7 @@ export class PackagistRegistry extends Registry {
 
       return versions;
     } catch (error) {
-      if (error instanceof HTTPError && error.isNotFound()) {
-        throw new NotFoundError("composer", name);
-      }
-      throw error;
+      rethrowFetchError(error, this.ecosystem(), name);
     }
   }
 
@@ -177,10 +174,7 @@ export class PackagistRegistry extends Registry {
 
       return dependencies;
     } catch (error) {
-      if (error instanceof HTTPError && error.isNotFound()) {
-        throw new NotFoundError("composer", name, version);
-      }
-      throw error;
+      rethrowFetchError(error, this.ecosystem(), name, version);
     }
   }
 
@@ -190,35 +184,9 @@ export class PackagistRegistry extends Registry {
 
     try {
       const data = await this.client.getJSON<PackagistPackageResponse>(url, signal);
-      const maintainers: Maintainer[] = [];
-      const seen = new Set<string>();
-
-      // Collect authors from all versions
-      for (const versionData of Object.values(data.package.versions)) {
-        if (versionData.authors) {
-          for (const author of versionData.authors) {
-            const key = `${author.name}:${author.email}`;
-            if (!seen.has(key)) {
-              seen.add(key);
-              maintainers.push({
-                uuid: "",
-                login: author.email ? author.email.split("@")[0] : "",
-                name: author.name || "",
-                email: author.email || "",
-                url: author.homepage || "",
-                role: author.role || "",
-              });
-            }
-          }
-        }
-      }
-
-      return maintainers;
+      return this.collectMaintainers(Object.values(data.package.versions));
     } catch (error) {
-      if (error instanceof HTTPError && error.isNotFound()) {
-        throw new NotFoundError("composer", name);
-      }
-      throw error;
+      rethrowFetchError(error, this.ecosystem(), name);
     }
   }
 
@@ -248,7 +216,35 @@ export class PackagistRegistry extends Registry {
     };
   }
 
-  /** Parse "vendor/package" format. */
+  private collectMaintainers(
+    versions: readonly Readonly<Pick<PackagistVersion, "authors">>[],
+  ): Maintainer[] {
+    const maintainers: Maintainer[] = [];
+    const seen = new Set<string>();
+
+    for (const version of versions) {
+      for (const author of version.authors ?? []) {
+        const key = `${author.name}:${author.email}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        maintainers.push(this.toMaintainer(author));
+      }
+    }
+
+    return maintainers;
+  }
+
+  private toMaintainer(author: Readonly<PackagistAuthor>): Maintainer {
+    return {
+      uuid: "",
+      login: author.email ? author.email.split("@")[0] : "",
+      name: author.name || "",
+      email: author.email || "",
+      url: author.homepage || "",
+      role: author.role || "",
+    };
+  }
+
   private parseName(name: string): [string, string] {
     const parts = name.split("/");
     if (parts.length !== 2 || !parts[0] || !parts[1]) {
@@ -260,8 +256,7 @@ export class PackagistRegistry extends Registry {
     return [parts[0]!, parts[1]!];
   }
 
-  /** Find the highest non-dev version. */
-  private findLatestVersion(versions: string[]): string {
+  private findLatestVersion(versions: readonly string[]): string {
     // Filter out dev versions
     const stable = versions.filter((v) => !v.startsWith("dev-") && !v.endsWith("-dev"));
     if (stable.length === 0) {
@@ -294,15 +289,13 @@ export class PackagistRegistry extends Registry {
     );
   }
 
-  /** Extract and normalize licenses. */
-  private extractLicenses(raw: string | string[] | undefined): string {
+  private extractLicenses(raw: string | readonly string[] | undefined): string {
     if (!raw) return "";
 
     const licenses = Array.isArray(raw) ? raw : [raw];
     return combineLicenses(licenses);
   }
 
-  /** Skip PHP and extension dependencies. */
   private shouldSkipDependency(name: string): boolean {
     return name === "php" || name.startsWith("ext-");
   }
