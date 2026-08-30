@@ -265,6 +265,25 @@ describe("purl", () => {
       ).toBe("pkg:npm/lodash?arch=x86_64&os=linux");
     });
 
+    it("canonicalizes qualifier keys and ordering", () => {
+      expect(
+        buildPURL({
+          type: "npm",
+          name: "lodash",
+          qualifiers: { Zeta: "1", arch: "x86_64", Distro: "debian" },
+        }),
+      ).toBe("pkg:npm/lodash?arch=x86_64&distro=debian&zeta=1");
+    });
+
+    it("rejects invalid or colliding qualifier keys", () => {
+      expect(() =>
+        buildPURL({ type: "npm", name: "lodash", qualifiers: { "bad key": "value" } }),
+      ).toThrow('invalid qualifier key "bad key"');
+      expect(() =>
+        buildPURL({ type: "npm", name: "lodash", qualifiers: { Arch: "arm64", arch: "x86_64" } }),
+      ).toThrow('duplicate qualifier key "arch"');
+    });
+
     it("builds PURL with subpath", () => {
       expect(buildPURL({ type: "npm", name: "lodash", subpath: "lib/index.js" })).toBe(
         "pkg:npm/lodash#lib/index.js",
