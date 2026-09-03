@@ -15,12 +15,14 @@ There is no embeddable TypeScript library that normalizes across registries. The
 
 @agntn/registries fills that gap. One `fetchPackage` call, same response shape, regardless of whether the package lives on npm or Packagist. Uses [PURL (ECMA-427)](https://github.com/package-url/purl-spec) for addressing, so `pkg:npm/lodash` and `pkg:cargo/serde` resolve through the same code path. Storage-backed caching with a lockfile keeps things fast on repeated lookups.
 
+Docs and the live lookup explorer: [registries.agntn.dev](https://registries.agntn.dev). The source lives in [`docs/`](./docs); run `pnpm docs` after `pnpm build` for a local copy.
+
 ## Features
 
 - 🔍 **Single API, six registries** - npm, PyPI, crates.io, RubyGems, Packagist, Arch Linux (official + AUR)
 - 📦 **PURL-native** - [ECMA-427](https://github.com/package-url/purl-spec) identifiers as first-class input
 - 🏷️ **Normalized data model** - same `Package`, `Version`, `Dependency`, `Maintainer` types everywhere
-- 💾 **Storage-backed cache + lockfile** - unstorage-native, sha256 integrity checks, configurable TTL
+- 💾 **Cache on unstorage with a lockfile** - sha256 integrity checks, configurable TTL
 - ⌨️ **CLI included** - `registries info npm/lodash`, `registries versions cargo/serde`, `registries deps pypi/flask@3.1.1`
 - 🔁 **Retry + backoff** - exponential backoff with jitter, rate limiter interface
 - 🪶 **ESM-only, zero CJS** - built with [obuild](https://github.com/unjs/obuild)
@@ -78,7 +80,7 @@ Add `--json` for machine-readable output, `--no-cache` to skip the cache.
 
 ### AI SDK tool
 
-`@agntn/registries/ai` exports a ready-made tool for AI SDK apps:
+`@agntn/registries/ai` exports a tool for AI SDK apps that needs no wiring:
 
 ```ts
 import { generateText } from "ai";
@@ -265,7 +267,7 @@ interface Package {
   homepage: string;
   documentation: string; // docs URL (docs.rs, readthedocs, rubydoc, etc.)
   repository: string;
-  licenses: string; // SPDX-normalized
+  licenses: string; // normalized to SPDX
   keywords: string[];
   namespace: string; // e.g. "@vue" for npm scoped packages
   latestVersion: string;

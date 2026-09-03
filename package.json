@@ -67,7 +67,9 @@
     "test": "vitest",
     "test:run": "vitest run",
     "prepack": "pnpm run build",
-    "release": "pnpm test:run && pnpm build && changelogen --release --push"
+    "release": "pnpm test:run && pnpm build && changelogen --release --push",
+    "docs": "pnpm --dir docs dev",
+    "docs:build": "pnpm --dir docs build"
   },
   "dependencies": {
     "citty": "^0.2.1",
