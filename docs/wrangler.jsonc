@@ -12,13 +12,13 @@
     {
       "binding": "DB",
       "database_name": "agntn-registries",
-      "database_id": "00000000-0000-0000-0000-000000000000"
+      "database_id": "19ed953c-720a-47af-b543-8d303e1fec23"
     }
   ],
   "kv_namespaces": [
     {
       "binding": "CACHE",
-      "id": "00000000000000000000000000000000"
+      "id": "74787a4910244ce6adc723b26114f82a"
     }
   ],
   "cache": {
