@@ -14,6 +14,8 @@ pnpm fmt                  # oxlint --fix + oxfmt
 pnpm test                 # vitest watch mode
 pnpm test:run             # vitest single run (CI-style)
 pnpm release              # test + build + changelogen --release --push
+pnpm docs                 # Docus site + lookup explorer on :3000 (after pnpm build)
+pnpm docs:build           # Cloudflare Workers build of the docs
 ```
 
 ### Run a single test
@@ -40,6 +42,7 @@ src/
 test/
 ├── unit/            # deterministic, mocked
 └── e2e/             # live HTTP against real registries
+docs/                # Docus site: guide, registry pages, live lookup explorer on Workers (see docs/AGENTS.md)
 ```
 
 ### Dependency direction
@@ -87,7 +90,7 @@ test/
 - Plugin-based via abstract `Registry` subclasses registered with `register()` and resolved by `create()`. No hardcoded switch logic.
 - Importing `@agntn/registries` registers the built-in adapters as an intentional side effect.
 - Each adapter normalizes upstream payloads into core types before returning.
-- No adapter-to-adapter imports.
+- No imports between adapters.
 
 ### Tests
 
@@ -148,3 +151,4 @@ test/
 - Bulk fetch helpers skip failed packages instead of failing all — this is intentional.
 - Cache is optional decorator, never mandatory in core flows.
 - e2e smoke tests are network-sensitive — failures may be transient.
+- `sideEffects` in `package.json` must cover `dist/_chunks/*.mjs`: obuild emits the adapter `register()` calls into a chunk, and a bundler that trusts `sideEffects` drops it otherwise (guarded by `test/unit/side-effects.test.ts`).

@@ -32,7 +32,8 @@
     "./src/index.ts",
     "./src/registries/index.ts",
     "./dist/index.mjs",
-    "./dist/registries/index.mjs"
+    "./dist/registries/index.mjs",
+    "./dist/_chunks/*.mjs"
   ],
   "main": "./dist/index.mjs",
   "types": "./dist/index.d.mts",
@@ -66,7 +67,9 @@
     "test": "vitest",
     "test:run": "vitest run",
     "prepack": "pnpm run build",
-    "release": "pnpm test:run && pnpm build && changelogen --release --push"
+    "release": "pnpm test:run && pnpm build && changelogen --release --push",
+    "docs": "pnpm --dir docs dev",
+    "docs:build": "pnpm --dir docs build"
   },
   "dependencies": {
     "citty": "^0.2.1",
