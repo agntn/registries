@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 import { defineCommand, runMain } from "citty";
+import { version } from "./version.ts";
 
 const main = defineCommand({
   meta: {
     name: "registries",
-    version: "0.1.0",
+    version,
     description:
       "Universal package registry client — query npm, PyPI, crates.io, RubyGems, Packagist with a single PURL-native API.",
   },
@@ -14,6 +15,7 @@ const main = defineCommand({
     deps: () => import("./commands/deps.ts").then((m) => m.default),
     maintainers: () => import("./commands/maintainers.ts").then((m) => m.default),
     cache: () => import("./commands/cache.ts").then((m) => m.default),
+    mcp: () => import("./commands/mcp.ts").then((m) => m.default),
   },
 });
 

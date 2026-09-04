@@ -12,7 +12,7 @@ export default defineConfig({
           { from: "file", name: "ToolResult" },
           {
             from: "package",
-            name: "ExtensionAPI",
+            name: ["ExtensionAPI", "ToolDefinition"],
             package: "@earendil-works/pi-coding-agent",
           },
           {
