@@ -103,6 +103,26 @@ The tool supports these operations through one input schema:
 // { operation: 'bulk-packages', purls: ['pkg:npm/lodash', 'pkg:cargo/serde'], concurrency?: number }
 ```
 
+### MCP
+
+The package ships an MCP server with six read-only tools for metadata, versions, dependencies, maintainers, bulk lookups, and ecosystem discovery:
+
+```bash
+claude mcp add registries --scope user -- npx @agntn/registries mcp
+```
+
+Hosts with their own transport can import `createMcpServer` from `@agntn/registries/mcp`.
+
+### Pi and OMP extensions
+
+Install the published package in OMP:
+
+```bash
+omp install @agntn/registries
+```
+
+From a source checkout, use `omp install .`. The package manifests point OMP and Pi at their matching extension entrypoints, and both expose the same six read-only tools as MCP.
+
 ## Registries
 
 | Ecosystem  | PURL type          | Registry                         |
@@ -231,6 +251,7 @@ registries <command> [options]
 | `registries versions <purl>`    | List all published versions                            |
 | `registries deps <purl>`        | Dependencies for a specific version                    |
 | `registries maintainers <purl>` | Package maintainers / authors                          |
+| `registries mcp`                | Start the MCP server over stdio                        |
 | `registries cache status`       | Show cache stats (entries, freshness)                  |
 | `registries cache path`         | Print cache directory path                             |
 | `registries cache clear`        | Remove all cached data                                 |
