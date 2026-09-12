@@ -55,4 +55,62 @@ describe("Client", () => {
       });
     }
   });
+
+  describe("against a server that never answers", () => {
+    let requests = 0;
+    let url = "";
+    const server = createServer(() => {
+      requests++;
+    });
+
+    beforeAll(async () => {
+      await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+      const address = server.address();
+      if (!address || typeof address === "string") throw new Error("Expected TCP server address");
+      url = `http://127.0.0.1:${address.port}`;
+    });
+
+    afterAll(async () => {
+      server.closeAllConnections();
+      await new Promise<void>((resolve, reject) => {
+        server.close((error) => (error ? reject(error) : resolve()));
+      });
+    });
+
+    beforeEach(() => {
+      requests = 0;
+    });
+
+    async function settle(request: Readonly<Promise<unknown>>, within: number): Promise<unknown> {
+      return Promise.race([
+        request.then(
+          () => "resolved",
+          (error: unknown) => error,
+        ),
+        new Promise((resolve) => setTimeout(() => resolve("still pending"), within)),
+      ]);
+    }
+
+    it("keeps the timeout while a caller signal stays active", async () => {
+      const controller = new AbortController();
+      const client = new Client({ timeout: 50, maxRetries: 1, baseDelay: 10 });
+
+      const outcome = await settle(client.getJSON(url, controller.signal), 1000);
+
+      expect(outcome).toMatchObject({ name: HTTPError.name, statusCode: 0 });
+      expect(controller.signal.aborted).toBe(false);
+      expect(requests).toBe(1);
+    });
+
+    it("stops retrying once the caller aborts", async () => {
+      const controller = new AbortController();
+      const client = new Client({ maxRetries: 5, baseDelay: 50 });
+      setTimeout(() => controller.abort(), 20);
+
+      const outcome = await settle(client.getJSON(url, controller.signal), 500);
+
+      expect(outcome).toMatchObject({ name: HTTPError.name, statusCode: 0 });
+      expect(requests).toBe(1);
+    });
+  });
 });

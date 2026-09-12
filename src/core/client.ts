@@ -1,5 +1,5 @@
 import { ofetch, FetchError } from "ofetch";
-import type { $Fetch } from "ofetch";
+import type { $Fetch, FetchOptions } from "ofetch";
 import type { ClientOptions, RateLimiter } from "./types.ts";
 import { HTTPError, RateLimitError } from "./errors.ts";
 
@@ -97,7 +97,6 @@ export class Client {
         }
       },
       retryStatusCodes: [408, 409, 425, 429, 500, 502, 503, 504],
-      timeout: this.timeout,
       headers: {
         Accept: "application/json",
         "User-Agent": this.userAgent,
@@ -123,7 +122,7 @@ export class Client {
     }
 
     try {
-      return await this.fetch<T>(url, { signal, headers });
+      return await this.fetch<T>(url, { headers, ...this.cancellation(signal) });
     } catch (error) {
       if (error instanceof FetchError) {
         if (error.statusCode === 429) {
@@ -136,6 +135,33 @@ export class Client {
       }
       throw error;
     }
+  }
+
+  /**
+   * ofetch skips its timeout once a signal is supplied and retries after an abort, so every
+   * attempt gets its own signal here and an aborted one ends the request.
+   *
+   * @param signal - Optional cancellation signal.
+   * @returns {FetchOptions} The request hooks that own cancellation.
+   */
+  private cancellation(
+    signal?: AbortSignal,
+  ): Pick<FetchOptions, "signal" | "onRequest" | "onRequestError"> {
+    return {
+      signal,
+      onRequest: ({ options }) => {
+        options.signal = this.attemptSignal(signal);
+      },
+      onRequestError: ({ options }) => {
+        if (options.signal?.aborted) options.retry = false;
+      },
+    };
+  }
+
+  private attemptSignal(signal?: AbortSignal): AbortSignal | undefined {
+    const signals = [signal, this.timeout > 0 ? AbortSignal.timeout(this.timeout) : undefined];
+    const active = signals.filter((candidate) => candidate !== undefined);
+    return active.length > 0 ? AbortSignal.any(active) : undefined;
   }
 }
 
