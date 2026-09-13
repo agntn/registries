@@ -588,6 +588,95 @@ describe("Registry Modules", () => {
       expect(pkg.licenses).toBe("MIT OR Apache-2.0");
     });
 
+    it("should list every PEP 621 author and maintainer address", async () => {
+      const client = new Client();
+
+      vi.spyOn(client, "getJSON").mockResolvedValueOnce({
+        info: {
+          name: "requests",
+          author: null,
+          author_email: '"Reitz, Kenneth" <me@kennethreitz.org>, nate.prewitt@gmail.com',
+          maintainer: null,
+          maintainer_email:
+            "Ian Stapleton Cordasco <graffatcolmingov@gmail.com>, Nate Prewitt <nate.prewitt@gmail.com>",
+        },
+      });
+
+      const maintainers = await create("pypi", undefined, client).fetchMaintainers("requests");
+
+      expect(maintainers).toEqual([
+        {
+          uuid: "",
+          login: "me",
+          name: "Reitz, Kenneth",
+          email: "me@kennethreitz.org",
+          url: "",
+          role: "author",
+        },
+        {
+          uuid: "",
+          login: "nate.prewitt",
+          name: "",
+          email: "nate.prewitt@gmail.com",
+          url: "",
+          role: "author",
+        },
+        {
+          uuid: "",
+          login: "graffatcolmingov",
+          name: "Ian Stapleton Cordasco",
+          email: "graffatcolmingov@gmail.com",
+          url: "",
+          role: "maintainer",
+        },
+      ]);
+    });
+
+    it("should pair a plain author name with its bare address", async () => {
+      const client = new Client();
+
+      vi.spyOn(client, "getJSON").mockResolvedValueOnce({
+        info: {
+          name: "rich",
+          author: "Will McGugan",
+          author_email: "willmcgugan@gmail.com",
+          maintainer: null,
+          maintainer_email: null,
+        },
+      });
+
+      const maintainers = await create("pypi", undefined, client).fetchMaintainers("rich");
+
+      expect(maintainers).toEqual([
+        {
+          uuid: "",
+          login: "willmcgugan",
+          name: "Will McGugan",
+          email: "willmcgugan@gmail.com",
+          url: "",
+          role: "author",
+        },
+      ]);
+    });
+
+    it("should keep a comma separated author name whole without addresses", async () => {
+      const client = new Client();
+
+      vi.spyOn(client, "getJSON").mockResolvedValueOnce({
+        info: {
+          name: "pytest",
+          author: "Holger Krekel, Bruno Oliveira, Others (See AUTHORS)",
+          author_email: null,
+        },
+      });
+
+      const maintainers = await create("pypi", undefined, client).fetchMaintainers("pytest");
+
+      expect(maintainers).toHaveLength(1);
+      expect(maintainers[0].name).toBe("Holger Krekel, Bruno Oliveira, Others (See AUTHORS)");
+      expect(maintainers[0].email).toBe("");
+    });
+
     it("should throw NotFoundError for missing pypi package", async () => {
       const client = new Client();
 

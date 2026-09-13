@@ -18,8 +18,10 @@ interface PyPIPackageResponse {
     license: string | null;
     license_expression?: string | null;
     keywords: string;
-    author: string;
-    author_email: string;
+    author: string | null;
+    author_email: string | null;
+    maintainer?: string | null;
+    maintainer_email?: string | null;
     project_urls: Record<string, string>;
     requires_dist: string[] | null;
   };
@@ -65,6 +67,57 @@ function pypiLicense(
   info: Readonly<Pick<PyPIPackageResponse["info"], "license" | "license_expression">>,
 ): string {
   return normalizeLicense(info.license_expression || info.license);
+}
+
+interface PyPIContact {
+  readonly name: string;
+  readonly email: string;
+}
+
+const MAILBOX_PATTERN = /^(?:"([^"]*)"|([^<]*?))\s*<([^>]*)>$/;
+const ADDRESS_ITEM_PATTERN = /(?:"[^"]*"|<[^>]*>|[^,])+/g;
+
+/**
+ * Split a core metadata address list on the commas outside quotes and angle brackets.
+ *
+ * @param value - Comma separated mailboxes.
+ * @returns {string[]} The trimmed, non-empty items.
+ */
+function splitAddressList(value: string): string[] {
+  return [...value.matchAll(ADDRESS_ITEM_PATTERN)].map(([item]) => item.trim()).filter(Boolean);
+}
+
+/**
+ * Read one `Name <email>` mailbox; a bare address has no name and a bare name no address.
+ *
+ * @param item - One item of an address list.
+ * @returns {PyPIContact} The name and email found in it.
+ */
+function parseMailbox(item: string): PyPIContact {
+  const match = item.match(MAILBOX_PATTERN);
+  if (match) return { name: (match[1] ?? match[2] ?? "").trim(), email: match[3]!.trim() };
+  return item.includes("@") ? { name: "", email: item } : { name: item, email: "" };
+}
+
+/**
+ * The name field only labels a lone bare address; PEP 621 lists everyone in the email field.
+ *
+ * @param name - The `author` or `maintainer` field.
+ * @param emails - The matching `author_email` or `maintainer_email` field.
+ * @returns {PyPIContact[]} One contact per person.
+ */
+function pypiContacts(
+  name: string | null | undefined,
+  emails: string | null | undefined,
+): PyPIContact[] {
+  const label = name?.trim() ?? "";
+  const contacts = splitAddressList(emails ?? "").map(parseMailbox);
+
+  if (contacts.length === 0) return label ? [{ name: label, email: "" }] : [];
+  if (contacts.length === 1 && label && !contacts[0]!.name) {
+    return [{ name: label, email: contacts[0]!.email }];
+  }
+  return contacts;
 }
 
 /** PyPI registry client. */
@@ -163,18 +216,28 @@ export class PyPIRegistry extends Registry {
     const url = `${this.baseURL}/pypi/${normalized}/json`;
 
     try {
-      const data = await this.client.getJSON<PyPIPackageResponse>(url, signal);
+      const { info } = await this.client.getJSON<PyPIPackageResponse>(url, signal);
+      const groups = [
+        ["author", pypiContacts(info.author, info.author_email)],
+        ["maintainer", pypiContacts(info.maintainer, info.maintainer_email)],
+      ] as const;
+      const seen = new Set<string>();
       const maintainers: Maintainer[] = [];
 
-      if (data.info.author || data.info.author_email) {
-        maintainers.push({
-          uuid: "",
-          login: data.info.author_email ? data.info.author_email.split("@")[0] : "",
-          name: data.info.author || "",
-          email: data.info.author_email || "",
-          url: "",
-          role: "author",
-        });
+      for (const [role, contacts] of groups) {
+        for (const contact of contacts) {
+          const key = (contact.email || contact.name).toLowerCase();
+          if (seen.has(key)) continue;
+          seen.add(key);
+          maintainers.push({
+            uuid: "",
+            login: contact.email ? contact.email.split("@")[0]! : "",
+            name: contact.name,
+            email: contact.email,
+            url: "",
+            role,
+          });
+        }
       }
 
       return maintainers;
