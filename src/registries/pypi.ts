@@ -15,7 +15,8 @@ interface PyPIPackageResponse {
     version: string;
     summary: string;
     description: string;
-    license: string;
+    license: string | null;
+    license_expression?: string | null;
     keywords: string;
     author: string;
     author_email: string;
@@ -54,6 +55,18 @@ interface PyPISimpleFile {
   readonly "upload-time"?: string;
 }
 
+/**
+ * PEP 639 projects put the SPDX expression in `license_expression` and leave `license` null.
+ *
+ * @param info - License fields of the JSON API `info` object.
+ * @returns {string} The normalized SPDX expression, or an empty string.
+ */
+function pypiLicense(
+  info: Readonly<Pick<PyPIPackageResponse["info"], "license" | "license_expression">>,
+): string {
+  return normalizeLicense(info.license_expression || info.license);
+}
+
 /** PyPI registry client. */
 export class PyPIRegistry extends Registry {
   constructor(baseURL: string, client: Client) {
@@ -79,7 +92,7 @@ export class PyPIRegistry extends Registry {
       const data = await this.client.getJSON<PyPIPackageResponse>(url, signal);
       const info = data.info;
 
-      const licenses = normalizeLicense(info.license);
+      const licenses = pypiLicense(info);
       const repository = this.extractRepository(info.project_urls);
       const keywords = this.parseKeywords(info.keywords);
 
