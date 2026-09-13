@@ -18,8 +18,10 @@ interface PyPIPackageResponse {
     license: string | null;
     license_expression?: string | null;
     keywords: string;
-    author: string;
-    author_email: string;
+    author: string | null;
+    author_email: string | null;
+    maintainer?: string | null;
+    maintainer_email?: string | null;
     project_urls: Record<string, string>;
     requires_dist: string[] | null;
   };
@@ -65,6 +67,75 @@ function pypiLicense(
   info: Readonly<Pick<PyPIPackageResponse["info"], "license" | "license_expression">>,
 ): string {
   return normalizeLicense(info.license_expression || info.license);
+}
+
+interface PyPIContact {
+  readonly name: string;
+  readonly email: string;
+}
+
+const QUOTED_NAME_PATTERN = /^"((?:[^"\\]|\\.)*)"\s*<([^>]*)>$/;
+const ANGLE_ADDRESS_PATTERN = /^([^<]*?)\s*<([^>]*)>$/;
+const COMMENT_PATTERN = /\(([^)]*)\)/g;
+const ADDRESS_ITEM_PATTERN = /(?:"(?:[^"\\]|\\.)*"|<[^>]*>|\([^)]*\)|[^,])+/g;
+
+/**
+ * Split an address list on the commas outside quotes, angle brackets and one level of comments.
+ *
+ * @param value - Comma separated mailboxes.
+ * @returns {string[]} The trimmed, non-empty items.
+ */
+function splitAddressList(value: string): string[] {
+  return [...value.matchAll(ADDRESS_ITEM_PATTERN)].map(([item]) => item.trim()).filter(Boolean);
+}
+
+/**
+ * Read one mailbox; a comment names a bare address, and a bare name has no address.
+ *
+ * @param item - One item of an address list.
+ * @returns {PyPIContact} The name and email found in it.
+ */
+function parseMailbox(item: string): PyPIContact {
+  const quoted = item.match(QUOTED_NAME_PATTERN);
+  if (quoted) {
+    return { name: quoted[1]!.replaceAll(/\\(.)/g, "$1").trim(), email: quoted[2]!.trim() };
+  }
+
+  const comments: string[] = [];
+  const bare = item
+    .replaceAll(COMMENT_PATTERN, (_match: string, comment: string) => {
+      comments.push(comment.trim());
+      return " ";
+    })
+    .trim();
+  const comment = comments.filter(Boolean).join(" ");
+  const angled = bare.match(ANGLE_ADDRESS_PATTERN);
+  if (angled) return { name: angled[1]!.trim() || comment, email: angled[2]!.trim() };
+  return bare.includes("@") ? { name: comment, email: bare } : { name: bare || comment, email: "" };
+}
+
+/**
+ * PEP 621 keeps people without an email in the name field, so the label stays its own entry.
+ *
+ * @param name - The `author` or `maintainer` field.
+ * @param emails - The matching `author_email` or `maintainer_email` field.
+ * @returns {PyPIContact[]} One contact per person.
+ */
+function pypiContacts(
+  name: string | null | undefined,
+  emails: string | null | undefined,
+): PyPIContact[] {
+  const label = name?.trim() ?? "";
+  const contacts = splitAddressList(emails ?? "").map(parseMailbox);
+
+  if (!label) return contacts;
+  if (contacts.length === 1 && !contacts[0]!.name) {
+    return [{ name: label, email: contacts[0]!.email }];
+  }
+  if (contacts.some((contact) => contact.name.toLowerCase() === label.toLowerCase())) {
+    return contacts;
+  }
+  return [{ name: label, email: "" }, ...contacts];
 }
 
 /** PyPI registry client. */
@@ -163,18 +234,28 @@ export class PyPIRegistry extends Registry {
     const url = `${this.baseURL}/pypi/${normalized}/json`;
 
     try {
-      const data = await this.client.getJSON<PyPIPackageResponse>(url, signal);
+      const { info } = await this.client.getJSON<PyPIPackageResponse>(url, signal);
+      const groups = [
+        ["author", pypiContacts(info.author, info.author_email)],
+        ["maintainer", pypiContacts(info.maintainer, info.maintainer_email)],
+      ] as const;
+      const seen = new Set<string>();
       const maintainers: Maintainer[] = [];
 
-      if (data.info.author || data.info.author_email) {
-        maintainers.push({
-          uuid: "",
-          login: data.info.author_email ? data.info.author_email.split("@")[0] : "",
-          name: data.info.author || "",
-          email: data.info.author_email || "",
-          url: "",
-          role: "author",
-        });
+      for (const [role, contacts] of groups) {
+        for (const contact of contacts) {
+          const key = (contact.email || contact.name).toLowerCase();
+          if (seen.has(key)) continue;
+          seen.add(key);
+          maintainers.push({
+            uuid: "",
+            login: contact.email ? contact.email.split("@")[0]! : "",
+            name: contact.name,
+            email: contact.email,
+            url: "",
+            role,
+          });
+        }
       }
 
       return maintainers;
