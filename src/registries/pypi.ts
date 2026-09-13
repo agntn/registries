@@ -80,7 +80,7 @@ const COMMENT_PATTERN = /\(([^)]*)\)/g;
 const ADDRESS_ITEM_PATTERN = /(?:"(?:[^"\\]|\\.)*"|<[^>]*>|\([^)]*\)|[^,])+/g;
 
 /**
- * Split an RFC 822 address list on the commas outside quotes, angle brackets and comments.
+ * Split an address list on the commas outside quotes, angle brackets and one level of comments.
  *
  * @param value - Comma separated mailboxes.
  * @returns {string[]} The trimmed, non-empty items.
