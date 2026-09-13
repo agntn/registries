@@ -1,5 +1,32 @@
 # Changelog
 
+## v0.3.1
+
+[compare changes](https://github.com/agntn/registries/compare/v0.3.0...v0.3.1)
+
+### 🚀 Enhancements
+
+- Connect registries to Pi, OMP and MCP ([#76](https://github.com/agntn/registries/pull/76))
+
+### 🩹 Fixes
+
+- **client:** Apply the timeout under a caller signal ([#77](https://github.com/agntn/registries/pull/77))
+- **pypi:** Take licenses from the PEP 639 expression ([#78](https://github.com/agntn/registries/pull/78))
+- **pypi:** List each PEP 621 author and maintainer ([#79](https://github.com/agntn/registries/pull/79))
+
+### 📖 Documentation
+
+- Registries.agntn.dev with a live lookup ([#75](https://github.com/agntn/registries/pull/75))
+
+### 🏡 Chore
+
+- **lint:** Align registries with @agntn/ox ([#73](https://github.com/agntn/registries/pull/73))
+
+### ❤️ Contributors
+
+- Ori ([@oritwoen](https://github.com/oritwoen))
+- Aeitwoen ([@aeitwoen](https://github.com/aeitwoen))
+
 ## v0.3.0
 
 [compare changes](https://github.com/agntn/registries/compare/v0.1.7...v0.3.0)
