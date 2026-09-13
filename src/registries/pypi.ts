@@ -74,11 +74,13 @@ interface PyPIContact {
   readonly email: string;
 }
 
-const MAILBOX_PATTERN = /^(?:"([^"]*)"|([^<]*?))\s*<([^>]*)>$/;
-const ADDRESS_ITEM_PATTERN = /(?:"[^"]*"|<[^>]*>|[^,])+/g;
+const QUOTED_NAME_PATTERN = /^"((?:[^"\\]|\\.)*)"\s*<([^>]*)>$/;
+const ANGLE_ADDRESS_PATTERN = /^([^<]*?)\s*<([^>]*)>$/;
+const COMMENT_PATTERN = /\(([^)]*)\)/g;
+const ADDRESS_ITEM_PATTERN = /(?:"(?:[^"\\]|\\.)*"|<[^>]*>|\([^)]*\)|[^,])+/g;
 
 /**
- * Split a core metadata address list on the commas outside quotes and angle brackets.
+ * Split an RFC 822 address list on the commas outside quotes, angle brackets and comments.
  *
  * @param value - Comma separated mailboxes.
  * @returns {string[]} The trimmed, non-empty items.
@@ -88,19 +90,32 @@ function splitAddressList(value: string): string[] {
 }
 
 /**
- * Read one `Name <email>` mailbox; a bare address has no name and a bare name no address.
+ * Read one mailbox; a comment names a bare address, and a bare name has no address.
  *
  * @param item - One item of an address list.
  * @returns {PyPIContact} The name and email found in it.
  */
 function parseMailbox(item: string): PyPIContact {
-  const match = item.match(MAILBOX_PATTERN);
-  if (match) return { name: (match[1] ?? match[2] ?? "").trim(), email: match[3]!.trim() };
-  return item.includes("@") ? { name: "", email: item } : { name: item, email: "" };
+  const quoted = item.match(QUOTED_NAME_PATTERN);
+  if (quoted) {
+    return { name: quoted[1]!.replaceAll(/\\(.)/g, "$1").trim(), email: quoted[2]!.trim() };
+  }
+
+  const comments: string[] = [];
+  const bare = item
+    .replaceAll(COMMENT_PATTERN, (_match: string, comment: string) => {
+      comments.push(comment.trim());
+      return " ";
+    })
+    .trim();
+  const comment = comments.filter(Boolean).join(" ");
+  const angled = bare.match(ANGLE_ADDRESS_PATTERN);
+  if (angled) return { name: angled[1]!.trim() || comment, email: angled[2]!.trim() };
+  return bare.includes("@") ? { name: comment, email: bare } : { name: bare || comment, email: "" };
 }
 
 /**
- * The name field only labels a lone bare address; PEP 621 lists everyone in the email field.
+ * PEP 621 keeps people without an email in the name field, so the label stays its own entry.
  *
  * @param name - The `author` or `maintainer` field.
  * @param emails - The matching `author_email` or `maintainer_email` field.
@@ -113,11 +128,14 @@ function pypiContacts(
   const label = name?.trim() ?? "";
   const contacts = splitAddressList(emails ?? "").map(parseMailbox);
 
-  if (contacts.length === 0) return label ? [{ name: label, email: "" }] : [];
-  if (contacts.length === 1 && label && !contacts[0]!.name) {
+  if (!label) return contacts;
+  if (contacts.length === 1 && !contacts[0]!.name) {
     return [{ name: label, email: contacts[0]!.email }];
   }
-  return contacts;
+  if (contacts.some((contact) => contact.name.toLowerCase() === label.toLowerCase())) {
+    return contacts;
+  }
+  return [{ name: label, email: "" }, ...contacts];
 }
 
 /** PyPI registry client. */

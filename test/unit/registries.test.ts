@@ -677,6 +677,46 @@ describe("Registry Modules", () => {
       expect(maintainers[0].email).toBe("");
     });
 
+    it("should keep an author without an email next to the emailed ones", async () => {
+      const client = new Client();
+
+      vi.spyOn(client, "getJSON").mockResolvedValueOnce({
+        info: {
+          name: "mixed",
+          author: "Alice",
+          author_email: "Bob <bob@example.com>",
+          maintainer: "Bob",
+          maintainer_email: "bob@example.com",
+        },
+      });
+
+      const maintainers = await create("pypi", undefined, client).fetchMaintainers("mixed");
+
+      expect(maintainers.map((m) => [m.name, m.email, m.role])).toEqual([
+        ["Alice", "", "author"],
+        ["Bob", "bob@example.com", "author"],
+      ]);
+    });
+
+    it("should read RFC 822 comments and escaped quotes", async () => {
+      const client = new Client();
+
+      vi.spyOn(client, "getJSON").mockResolvedValueOnce({
+        info: {
+          name: "legacy",
+          author: null,
+          author_email: 'joe@example.com (Doe, Joe), "Ann \\"Nan\\" Lee" <ann@example.com>',
+        },
+      });
+
+      const maintainers = await create("pypi", undefined, client).fetchMaintainers("legacy");
+
+      expect(maintainers.map((m) => [m.name, m.email])).toEqual([
+        ["Doe, Joe", "joe@example.com"],
+        ['Ann "Nan" Lee', "ann@example.com"],
+      ]);
+    });
+
     it("should throw NotFoundError for missing pypi package", async () => {
       const client = new Client();
 
