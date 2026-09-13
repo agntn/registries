@@ -1,5 +1,5 @@
 import { ofetch, FetchError } from "ofetch";
-import type { $Fetch } from "ofetch";
+import type { $Fetch, FetchOptions } from "ofetch";
 import type { ClientOptions, RateLimiter } from "./types.ts";
 import { HTTPError, RateLimitError } from "./errors.ts";
 
@@ -74,30 +74,9 @@ export class Client {
     this.userAgent = options.userAgent ?? DEFAULT_USER_AGENT;
     this.rateLimiter = options.rateLimiter ?? null;
 
-    const maxRetries = this.maxRetries;
-    const baseDelay = this.baseDelay;
-
     this.fetch = ofetch.create({
       retry: this.maxRetries,
-      retryDelay(context) {
-        const remaining = retryCount(context.options.retry);
-        const attempt = maxRetries - remaining;
-        const delay = baseDelay * Math.pow(2, attempt - 1);
-        const jitteredDelay = delay + delay * Math.random() * 0.1;
-        const retryAfter = context.response?.headers.get("Retry-After");
-        try {
-          return retryDelayFor(retryAfter, jitteredDelay);
-        } catch (error) {
-          if (error instanceof RateLimitError && context.response?.status !== 429) {
-            const requestURL =
-              typeof context.request === "string" ? context.request : context.request.url;
-            throw new HTTPError(context.response?.status ?? 0, requestURL, "");
-          }
-          throw error;
-        }
-      },
       retryStatusCodes: [408, 409, 425, 429, 500, 502, 503, 504],
-      timeout: this.timeout,
       headers: {
         Accept: "application/json",
         "User-Agent": this.userAgent,
@@ -123,7 +102,7 @@ export class Client {
     }
 
     try {
-      return await this.fetch<T>(url, { signal, headers });
+      return await this.fetch<T>(url, { headers, ...this.retryControl(signal) });
     } catch (error) {
       if (error instanceof FetchError) {
         if (error.statusCode === 429) {
@@ -137,6 +116,79 @@ export class Client {
       throw error;
     }
   }
+
+  /**
+   * ofetch drops its timeout once a signal is supplied, sleeps through backoff with a plain
+   * timer and retries after an abort, so the request owns all three here.
+   *
+   * @param signal - Optional cancellation signal.
+   * @returns {FetchOptions} The request hooks that own timeout, backoff and cancellation.
+   */
+  private retryControl(
+    signal?: AbortSignal,
+  ): Pick<FetchOptions, "signal" | "retryDelay" | "onRequest" | "onRequestError"> {
+    let pendingDelay = 0;
+    return {
+      signal,
+      retryDelay: (context) => {
+        const remaining = retryCount(context.options.retry);
+        const attempt = this.maxRetries - remaining;
+        const delay = this.baseDelay * Math.pow(2, attempt - 1);
+        const jitteredDelay = delay + delay * Math.random() * 0.1;
+        const retryAfter = context.response?.headers.get("Retry-After");
+        try {
+          pendingDelay = retryDelayFor(retryAfter, jitteredDelay);
+        } catch (error) {
+          if (error instanceof RateLimitError && context.response?.status !== 429) {
+            const requestURL =
+              typeof context.request === "string" ? context.request : context.request.url;
+            throw new HTTPError(context.response?.status ?? 0, requestURL, "");
+          }
+          throw error;
+        }
+        return 0;
+      },
+      onRequest: async ({ options }) => {
+        if (pendingDelay > 0) {
+          await abortableDelay(pendingDelay, signal);
+          pendingDelay = 0;
+        }
+        options.signal = this.attemptSignal(signal);
+      },
+      onRequestError: ({ options }) => {
+        if (signal?.aborted) options.retry = false;
+      },
+    };
+  }
+
+  private attemptSignal(signal?: AbortSignal): AbortSignal | undefined {
+    const signals = [signal, this.timeout > 0 ? AbortSignal.timeout(this.timeout) : undefined];
+    const active = signals.filter((candidate) => candidate !== undefined);
+    return active.length > 0 ? AbortSignal.any(active) : undefined;
+  }
+}
+
+/**
+ * Sleep that returns as soon as the signal fires, so an abort never waits out a Retry-After.
+ *
+ * @param milliseconds - Delay before resolving.
+ * @param signal - Optional cancellation signal that ends the wait early.
+ * @returns {Promise<void>} Resolution after the delay or the abort.
+ */
+function abortableDelay(milliseconds: number, signal?: AbortSignal): Promise<void> {
+  if (!signal) return new Promise((resolve) => setTimeout(resolve, milliseconds));
+  if (signal.aborted) return Promise.resolve();
+  return new Promise((resolve) => {
+    const onAbort = (): void => {
+      clearTimeout(timer);
+      resolve();
+    };
+    const timer = setTimeout(() => {
+      signal.removeEventListener("abort", onAbort);
+      resolve();
+    }, milliseconds);
+    signal.addEventListener("abort", onAbort, { once: true });
+  });
 }
 
 let _defaultClient: Client | undefined;
