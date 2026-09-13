@@ -563,6 +563,31 @@ describe("Registry Modules", () => {
       expect(pkg.documentation).toBe("https://requests.readthedocs.io");
     });
 
+    it("should read the PEP 639 license expression", async () => {
+      const client = new Client();
+
+      vi.spyOn(client, "getJSON").mockResolvedValueOnce({
+        info: {
+          name: "uv",
+          version: "0.8.0",
+          summary: "An extremely fast Python package and project manager.",
+          description: "",
+          license: null,
+          license_expression: "MIT OR Apache-2.0",
+          keywords: "",
+          author: null,
+          author_email: '"Astral Software Inc." <hey@astral.sh>',
+          project_urls: {},
+          requires_dist: null,
+        },
+        urls: [],
+      });
+
+      const pkg = await create("pypi", undefined, client).fetchPackage("uv");
+
+      expect(pkg.licenses).toBe("MIT OR Apache-2.0");
+    });
+
     it("should throw NotFoundError for missing pypi package", async () => {
       const client = new Client();
 
