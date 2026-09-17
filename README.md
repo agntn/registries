@@ -5,25 +5,25 @@
 [![license](https://npmx.dev/api/registry/badge/license/@agntn/registries)](https://npmx.dev/package/@agntn/registries)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/agntn/registries)
 
-📦 Six package registries, one `Package`. npm, crates.io, PyPI, RubyGems, Packagist and Arch Linux answer the same question with the same object, from your terminal, your TypeScript or your agent, and `pkg:npm/lodash` is the whole address.
+📦 Six package registries, one `Package`. Ask npm, crates.io, PyPI, RubyGems, Packagist or the AUR about a package and the same object comes back, from your terminal, your TypeScript or your agent. `pkg:npm/lodash` is the whole address.
 
 ## Why?
 
-Every registry knows the same things about a package and has its own way of handing them over. npm puts everything in one JSON, crates.io splits it over three endpoints, PyPI keeps the license in a different field depending on the year, RubyGems answers owners separately, and Arch is two registries wearing one PURL type. Wire those into one script and you're maintaining six clients for one question. So this is one `Registry` class in front of all of them, addressed by [package URL](https://github.com/package-url/purl-spec), and the only thing that changes between `pkg:npm/lodash` and `pkg:cargo/serde` is the string.
+Six registries, six APIs, and no two of them agree on what a package looks like. npm dumps one big JSON, crates.io makes you ask three times, PyPI has two license fields and which one is filled depends on how old the upload is, and Arch is two registries wearing one PURL type. Write a client for each and you've got six clients for one question, and a license wrong somewhere, everyone does. So: one `Registry` in front of all of them, addressed by [package URL](https://github.com/package-url/purl-spec), and `pkg:cargo/serde` is just `pkg:npm/lodash` with a different string.
 
-The docs, plus a lookup page you can point at any PURL: [registries.agntn.dev](https://registries.agntn.dev).
+Everything longer than this file is at [registries.agntn.dev](https://registries.agntn.dev), lookup page included, it runs the library live.
 
 ## ✨ Features
 
-- 🧩 **Six registries, same object.** npm, crates.io, PyPI, RubyGems, Packagist and Arch Linux, official repos and the AUR both, and `Package`, `Version`, `Dependency` and `Maintainer` have the same fields on every one of them.
-- 🔗 **PURL is the address.** `pkg:npm/lodash`, `pkg:cargo/serde@1.0.229`, `pkg:alpm/aur/paru`, the [ECMA-427](https://github.com/package-url/purl-spec) package URL goes in everywhere, and the CLI doesn't even make you type `pkg:`.
-- 🏷️ **Licenses as SPDX.** `MIT License` becomes `MIT` and `Apache 2.0` becomes `Apache-2.0`, so a license from PyPI compares to a license from crates.io without a regex in between.
-- 💾 **Cache with a lockfile.** An hour for metadata, half an hour for versions, a day for dependencies and maintainers, and a sha256 on every entry so a mangled file gets refetched instead of trusted.
-- ⌨️ **A CLI that pipes.** `registries info npm/lodash` for your eyes, `--json` for the exact object the library returns, `--no-cache` for when you don't believe yesterday.
-- 🔁 **Retries you don't write.** Five retries with exponential backoff, `Retry-After` respected on a 429, and a `rateLimiter` slot if a registry has opinions about your pace.
-- 📚 **Bulk lookups that skip, not fail.** `bulkFetchPackages` takes a list, runs fifteen at a time, and a package that fails is simply missing from the `Map` instead of taking the batch down with it.
-- 🤖 **CLI, library, AI SDK, MCP, Pi and OMP.** Six read-only tools on the last three, one `packageTool` with five operations on `@agntn/registries/ai`.
-- 🪶 **ESM only.** Built with [obuild](https://github.com/unjs/obuild), no CommonJS, Node.js 22.6 or newer.
+- 🧩 **Six registries, one shape.** npm, crates.io, PyPI, RubyGems, Packagist, Arch with the AUR. `Package`, `Version`, `Dependency`, `Maintainer`, same fields everywhere.
+- 🔗 **PURL is the address.** `pkg:cargo/serde@1.0.229`, `pkg:alpm/aur/paru`, that's [ECMA-427](https://github.com/package-url/purl-spec) and it goes in everywhere. The CLI lets you skip the `pkg:`.
+- 🏷️ **Licenses come back as SPDX.** `MIT License` is `MIT`, `Apache 2.0` is `Apache-2.0`, compare them without a regex.
+- 💾 **Cache with a lockfile.** An hour for metadata, half an hour for versions, a day for deps and maintainers, sha256 on every entry.
+- ⌨️ **A CLI that pipes.** `--json` is exactly what the library returns, `--no-cache` for when you don't trust yesterday.
+- 🔁 **Retries you don't write.** Five of them, exponential backoff, `Retry-After` respected when a registry says 429.
+- 📚 **Bulk that shrugs.** Fifteen packages at a time, and one that fails is just missing from the answer, not an exception for everyone else.
+- 🤖 **Library, CLI, AI SDK, MCP, Pi and OMP.** Six read-only tools on the agent side, same code behind all of them.
+- 🪶 **ESM only.** [obuild](https://github.com/unjs/obuild), no CommonJS, Node.js 22.6 or newer.
 
 ## 📦 Install
 
@@ -31,7 +31,7 @@ The docs, plus a lookup page you can point at any PURL: [registries.agntn.dev](h
 pnpm add @agntn/registries
 ```
 
-Node.js 22.6 or newer. Only the AI SDK tool on `@agntn/registries/ai` needs `ai` and `zod`, so they're optional peers, add them if you use it:
+Node.js 22.6 or newer. `ai` and `zod` only if you want the AI SDK tool, nothing else touches them:
 
 ```bash
 pnpm add ai zod
@@ -55,7 +55,7 @@ npx @agntn/registries info npm/lodash
   Ecosystem:  npm
 ```
 
-No key, no config, no `pkg:`. `npm/lodash` is enough on the command line, the library wants the full `pkg:npm/lodash`. Same command, a crate:
+No key, no config, no `pkg:`. And it really doesn't care which registry, try a crate:
 
 ```bash
 registries info cargo/serde
@@ -74,7 +74,7 @@ registries info cargo/serde
   Ecosystem:  cargo
 ```
 
-Same lines, other registry, and `Docs` shows up because crates.io knows about docs.rs. Versions come twenty at a time, newest first, `--limit` for more or fewer:
+Same lines, plus `Docs`, because crates.io knows about docs.rs. Nice of them. Versions come twenty at a time, `--limit` if that's too many or too few:
 
 ```bash
 registries versions gem/rails --limit 5
@@ -94,7 +94,7 @@ registries versions gem/rails --limit 5
 
 Three branches patched on the same Wednesday. Somebody at Rails had a day ;)
 
-No version on `deps`? It takes the latest and tells you which one it picked:
+No version on `deps`? It takes the latest and says so:
 
 ```bash
 registries deps alpm/aur/paru
@@ -118,7 +118,7 @@ registries deps alpm/aur/paru
     devtools  (optional)
 ```
 
-An AUR helper that depends on pacman, which is only fair. Official packages don't need the namespace, `alpm/pacman` means `alpm/arch/pacman`. The AUR you have to say out loud.
+An AUR helper that depends on pacman. Fair enough. `alpm/pacman` is short for `alpm/arch/pacman`, the AUR you have to name.
 
 A few more, same rules:
 
@@ -133,16 +133,16 @@ registries cache status
 
 ### Commands
 
-| Command       | What it does                                                        | Example                                   |
-| ------------- | ------------------------------------------------------------------- | ----------------------------------------- |
-| `info`        | Name, latest version, license, repository, docs, keywords           | `registries info npm/lodash`              |
-| `versions`    | Versions newest first, twenty unless you `--limit`                  | `registries versions gem/rails --limit 5` |
-| `deps`        | Dependencies of one version, grouped by scope                       | `registries deps pypi/flask@3.1.1`        |
-| `maintainers` | Who publishes it, with login, email and role when the registry says | `registries maintainers gem/rails`        |
-| `cache`       | `status`, `path`, `prune` and `clear` for the local cache           | `registries cache status`                 |
-| `mcp`         | The MCP server on stdio                                             | `registries mcp`                          |
+| Command       | What it does                                       | Example                                   |
+| ------------- | -------------------------------------------------- | ----------------------------------------- |
+| `info`        | Name, latest version, license, repo, docs          | `registries info npm/lodash`              |
+| `versions`    | Newest first, twenty unless you `--limit`          | `registries versions gem/rails --limit 5` |
+| `deps`        | One version's dependencies, grouped by scope       | `registries deps pypi/flask@3.1.1`        |
+| `maintainers` | Who publishes it, email and role when there is one | `registries maintainers gem/rails`        |
+| `cache`       | `status`, `path`, `prune`, `clear`                 | `registries cache status`                 |
+| `mcp`         | The MCP server on stdio                            | `registries mcp`                          |
 
-`--json` and `--no-cache` work on every lookup, `--limit` on `versions` only. Where the cache lives and what each command prints, line by line: [CLI guide](https://registries.agntn.dev/guide/cli).
+`--json` and `--no-cache` on every lookup, `--limit` on `versions`. Where the cache lives and what each command prints is in the [CLI guide](https://registries.agntn.dev/guide/cli).
 
 ## 🧠 Library
 
@@ -170,7 +170,7 @@ parsePURL("pkg:npm/%40vue/core@3.5.0");
 // { type: 'npm', namespace: '@vue', name: 'core', version: '3.5.0', qualifiers: {}, subpath: '' }
 ```
 
-Nine lines and you've seen most of it. Four `...FromPURL` helpers and `bulkFetchPackages` for a list, `create("npm")` when you'd rather hold the adapter yourself, `createFromPURL` when you want the adapter, the name and the version pulled apart, `createCached("npm")` for the same adapter with the cache in front, or `new CachedRegistry(adapter)` around one you already built. The cache is a directory, `~/.cache/registries` on Linux, `Library/Caches` on macOS, `LOCALAPPDATA` on Windows, `REGISTRIES_CACHE_DIR` if you disagree, and anywhere without a filesystem you hand `configureStorage` an [unstorage](https://unstorage.unjs.io) driver instead. Errors are one family: `NotFoundError` when the package isn't there, `InvalidPURLError` when the string doesn't start with `pkg:`, `UnknownEcosystemError` for `pkg:hex/...`, `RateLimitError` with the seconds the registry asked for, `HTTPError` for the rest. Longer versions of all of that: [PURL](https://registries.agntn.dev/guide/purl), [Lookups](https://registries.agntn.dev/guide/lookups), [Cache](https://registries.agntn.dev/guide/cache).
+That's the library, more or less. `bulkFetchPackages` for a list, `create("npm")` if you'd rather hold the adapter yourself, `createCached("npm")` for the same thing with the cache in front. Errors are one family, `NotFoundError`, `InvalidPURLError`, `UnknownEcosystemError`, `RateLimitError`, `HTTPError`, and you can guess which is which. Cache directory, storage drivers and the rest of the API: [Lookups](https://registries.agntn.dev/guide/lookups), [PURL](https://registries.agntn.dev/guide/purl), [Cache](https://registries.agntn.dev/guide/cache).
 
 ## 🗺️ Registries
 
@@ -183,7 +183,7 @@ Nine lines and you've seen most of it. Four `...FromPURL` helpers and `bulkFetch
 | Packagist  | `pkg:composer/...` | packagist.org                    | `composer/laravel/framework`        |
 | Arch Linux | `pkg:alpm/...`     | archlinux.org, aur.archlinux.org | `alpm/arch/pacman`, `alpm/aur/paru` |
 
-Scoped npm packages are `pkg:npm/%40vue/reactivity` as a proper PURL and `npm/@vue/reactivity` on the CLI, both land in the same place. Arch is the one where the namespace matters: `arch` is the default, so `alpm/pacman` is the official package, and `aur` you spell out. Each registry has its own page with the endpoints it calls and the names it refuses: [Registries](https://registries.agntn.dev/registries).
+Scoped npm is `npm/@vue/reactivity` on the CLI and `pkg:npm/%40vue/reactivity` as a proper PURL, both fine. Arch is the one with a namespace, `arch` by default, `aur` when you mean it. One page per registry: [Registries](https://registries.agntn.dev/registries).
 
 ## 🤖 Agents
 
@@ -201,24 +201,24 @@ omp install @agntn/registries
 }
 ```
 
-Six read-only tools, `registries_package` through `registries_ecosystems`, the same six on MCP, Pi and OMP, and `registries_bulk_packages` takes fifty PURLs in one call. For the AI SDK there's `packageTool` on `@agntn/registries/ai`, one tool with five operations and the same helpers underneath: [Agents guide](https://registries.agntn.dev/guide/agents). And remember whose text that is: a description, a keyword, a maintainer name, all of it was typed by whoever published the package, so it's something to report, never something to obey.
+The agent side is six read-only tools, `registries_package` through `registries_ecosystems`, and MCP, Pi and OMP all run the same code behind them. The AI SDK gets `packageTool` from `@agntn/registries/ai`, one tool, five operations: [Agents guide](https://registries.agntn.dev/guide/agents). And whatever a package says about itself was typed by whoever published it, so it's data for the model, not orders.
 
 ## 🚫 What this does not do
 
-Install anything. No tarballs, no `node_modules`, no `pip install`, it reads what a registry says about a package and stops there. No semver solving either, `pkg:npm/lodash@^4` is a package that doesn't exist, give it an exact version or let it pick the latest. And no vulnerability feeds, that's a different job.
+Install anything. No tarballs, no `node_modules`, it reads what a registry says and stops there. No semver either, `pkg:npm/lodash@^4` is a package that doesn't exist, give it a real version or take the latest. Vulnerabilities? Different job.
 
 ## 🧩 Adding a registry
 
-Want a seventh? One class extending `Registry` with the six methods, then `register("hex", "https://hex.pm", HexRegistry)`, and `pkg:hex/phoenix` resolves through `create()` and every helper the way the built-ins do. The guide builds exactly that adapter for Hex, start to finish: [Custom registries](https://registries.agntn.dev/guide/custom).
+Want a seventh? Extend `Registry`, six methods, `register("hex", "https://hex.pm", HexRegistry)`, and `pkg:hex/phoenix` works everywhere the built-ins do. [Custom registries](https://registries.agntn.dev/guide/custom) builds the Hex one from scratch, so start there.
 
 ## 🛠️ Development
 
 ```bash
 pnpm install
-pnpm dev:prepare   # obuild --stub, so src/ changes show up without a build
+pnpm dev:prepare   # obuild --stub, src/ changes show up without a build
 pnpm fmt           # oxlint --fix and oxfmt
 pnpm lint          # builds first, then oxlint and oxfmt --check
-pnpm typecheck     # library and tests, then a build and the two extensions
+pnpm typecheck     # library and tests, then a build and both extensions
 pnpm test:run
 pnpm build         # obuild
 pnpm docs          # the Docus site on :3000, after pnpm build
