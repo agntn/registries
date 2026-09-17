@@ -55,7 +55,7 @@ npx @agntn/registries info npm/lodash
   Ecosystem:  npm
 ```
 
-No key, no config, no `pkg:`. And it really doesn't care which registry, try a crate:
+No key, no config, no `pkg:`. From here on it's plain `registries`, which after `pnpm add` means `pnpm exec registries`, or `pnpm add -g @agntn/registries` once and it's on your PATH. And it really doesn't care which registry, try a crate:
 
 ```bash
 registries info cargo/serde
