@@ -1,5 +1,26 @@
 # Changelog
 
+## v0.4.0
+
+[compare changes](https://github.com/agntn/registries/compare/v0.3.1...v0.4.0)
+
+### 💅 Refactors
+
+- ⚠️  Adapters load on the first create() ([#81](https://github.com/agntn/registries/pull/81))
+
+### 📖 Documentation
+
+- README that runs before it explains ([#80](https://github.com/agntn/registries/pull/80))
+
+#### ⚠️ Breaking Changes
+
+- ⚠️  Adapters load on the first create() ([#81](https://github.com/agntn/registries/pull/81))
+
+### ❤️ Contributors
+
+- Aeitwoen ([@aeitwoen](https://github.com/aeitwoen))
+- Ori ([@oritwoen](https://github.com/oritwoen))
+
 ## v0.3.1
 
 [compare changes](https://github.com/agntn/registries/compare/v0.3.0...v0.3.1)
