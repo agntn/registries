@@ -19,7 +19,7 @@ Everything longer than this file is at [registries.agntn.dev](https://registries
 - 🔗 **PURL is the address.** `pkg:cargo/serde@1.0.229`, `pkg:alpm/aur/paru`, that's [ECMA-427](https://github.com/package-url/purl-spec) and it goes in everywhere. The CLI lets you skip the `pkg:`.
 - 🏷️ **Licenses come back as SPDX.** `MIT License` is `MIT`, `Apache 2.0` is `Apache-2.0`, compare them without a regex.
 - 💾 **Cache with a lockfile.** An hour for metadata, half an hour for versions, a day for deps and maintainers, sha256 on every entry.
-- ⌨️ **A CLI that pipes.** `--json` is exactly what the library returns, `--no-cache` for when you don't trust yesterday.
+- ⌨️ **A CLI that pipes.** `--json` is the object the library returns, except `versions`, which stops at its `--limit`. `--no-cache` for when you don't trust yesterday.
 - 🔁 **Retries you don't write.** Five of them, exponential backoff, `Retry-After` respected when a registry says 429.
 - 📚 **Bulk that shrugs.** Fifteen packages at a time, and one that fails is just missing from the answer, not an exception for everyone else.
 - 🤖 **Library, CLI, AI SDK, MCP, Pi and OMP.** Six read-only tools on the agent side, same code behind all of them.
