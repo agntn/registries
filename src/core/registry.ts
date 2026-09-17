@@ -27,27 +27,22 @@ export interface RegistryEntry {
   readonly ecosystem: string;
   /** Registry API URL used when `create()` gets none. */
   readonly defaultURL: string;
-  /** Imports the adapter module; called once, on the first `create()` for the key. */
+  /** Resolves the adapter class; for a built-in that is a literal `import()` of its module. */
   readonly load: () => Promise<RegistryConstructor>;
 }
 
-interface Entry extends RegistryEntry {
-  RegistryClass?: RegistryConstructor;
-  pending?: Promise<RegistryConstructor>;
-}
-
-let entries: Map<string, Entry> | undefined;
+let entries: Map<string, RegistryEntry> | undefined;
 
 /**
  * The registry table, seeded from the built-in manifest on first use.
  *
- * Seeding copies metadata only. Adapter modules stay unloaded until `create()` asks for one, so
- * listing ecosystems or checking a key never parses an adapter.
+ * Seeding on first use rather than at module scope keeps this module free of calls a bundler
+ * would have to keep, so a consumer that never resolves an ecosystem drops the table too.
  *
- * @returns {Map<string, Entry>} The seeded table.
+ * @returns {Map<string, RegistryEntry>} The seeded table.
  */
-function table(): Map<string, Entry> {
-  entries ??= new Map(builtins.map((entry): [string, Entry] => [entry.ecosystem, { ...entry }]));
+function table(): Map<string, RegistryEntry> {
+  entries ??= new Map(builtins.map((entry): [string, RegistryEntry] => [entry.ecosystem, entry]));
   return entries;
 }
 
@@ -66,20 +61,14 @@ export function register(
   defaultURL: string,
   RegistryClass: RegistryConstructor,
 ): void {
-  table().set(ecosystem, {
-    ecosystem,
-    defaultURL,
-    load: () => Promise.resolve(RegistryClass),
-    RegistryClass,
-  });
+  table().set(ecosystem, { ecosystem, defaultURL, load: () => Promise.resolve(RegistryClass) });
 }
 
 /**
  * Create an adapter for a registered ecosystem.
  *
- * The first call for a built-in ecosystem imports its adapter module; later calls reuse the
- * loaded class. The pending import is shared, so parallel cold calls trigger one load, and a
- * rejected import is cleared so the next call retries instead of replaying the failure.
+ * A built-in adapter's module is imported here, on the first call for its key; the module map
+ * shares one import between parallel callers and answers later calls from cache.
  *
  * @param ecosystem - Ecosystem key.
  * @param baseURL - Optional registry API URL override.
@@ -96,16 +85,8 @@ export async function create(
   if (!entry) {
     throw new UnknownEcosystemError(ecosystem);
   }
-  if (!entry.RegistryClass) {
-    const pending = (entry.pending ??= entry.load());
-    try {
-      entry.RegistryClass = await pending;
-    } catch (error) {
-      if (entry.pending === pending) entry.pending = undefined;
-      throw error;
-    }
-  }
-  return new entry.RegistryClass(baseURL || entry.defaultURL, client ?? defaultClient());
+  const RegistryClass = await entry.load();
+  return new RegistryClass(baseURL || entry.defaultURL, client ?? defaultClient());
 }
 
 /**

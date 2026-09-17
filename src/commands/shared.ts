@@ -1,6 +1,6 @@
 import consola from "consola";
-import { createFromPURL, parsePURL, fullName } from "../core/purl.ts";
-import { create, ecosystems, type Registry } from "../core/registry.ts";
+import { createFromPURL } from "../core/purl.ts";
+import { ecosystems, type Registry } from "../core/registry.ts";
 import {
   HTTPError,
   NotFoundError,
@@ -34,20 +34,9 @@ export async function resolvePURL(
   input: string,
   useCache = true,
 ): Promise<[Registry, string, string]> {
-  let purl = input;
-  if (!purl.startsWith("pkg:")) {
-    purl = `pkg:${purl}`;
-  }
-
-  if (useCache) {
-    const parsed = parsePURL(purl);
-    const baseURL = parsed.qualifiers["repository_url"] ?? "";
-    const inner = await create(parsed.type, baseURL || undefined);
-    const reg = new CachedRegistry(inner);
-    return [reg, fullName(parsed), parsed.version];
-  }
-
-  return createFromPURL(purl);
+  const purl = input.startsWith("pkg:") ? input : `pkg:${input}`;
+  const [reg, name, version] = await createFromPURL(purl);
+  return [useCache ? new CachedRegistry(reg) : reg, name, version];
 }
 
 /**

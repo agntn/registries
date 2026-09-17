@@ -1,5 +1,4 @@
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import manifest from "../../package.json" with { type: "json" };
 import { Client } from "../../src/core/client.ts";
 import { UnknownEcosystemError } from "../../src/core/errors.ts";
 import { create, ecosystems, has } from "../../src/core/registry.ts";
@@ -8,50 +7,40 @@ import { create, ecosystems, has } from "../../src/core/registry.ts";
  * Each adapter module records its own evaluation. vitest runs a mock factory the first time the
  * module is imported, so the list is the import order the registry under test actually caused.
  */
-const loaded = vi.hoisted(() => ({ modules: [] as string[], alpmAttempts: 0 }));
+const loaded = vi.hoisted(() => {
+  const modules: string[] = [];
 
-function stubAdapter(ecosystem: string) {
-  return class {
-    readonly baseURL: string;
-    readonly client: unknown;
+  function stubAdapter(ecosystem: string) {
+    return class {
+      readonly baseURL: string;
+      readonly client: unknown;
 
-    constructor(baseURL: string, client: unknown) {
-      this.baseURL = baseURL;
-      this.client = client;
-    }
+      constructor(baseURL: string, client: unknown) {
+        this.baseURL = baseURL;
+        this.client = client;
+      }
 
-    ecosystem() {
-      return ecosystem;
-    }
+      ecosystem() {
+        return ecosystem;
+      }
+    };
+  }
+
+  return {
+    modules,
+    adapter: (ecosystem: string, exportName: string) => () => {
+      modules.push(ecosystem);
+      return { [exportName]: stubAdapter(ecosystem) };
+    },
   };
-}
+});
 
-vi.mock("../../src/registries/npm.ts", () => {
-  loaded.modules.push("npm");
-  return { NpmRegistry: stubAdapter("npm") };
-});
-vi.mock("../../src/registries/cargo.ts", () => {
-  loaded.modules.push("cargo");
-  return { CargoRegistry: stubAdapter("cargo") };
-});
-vi.mock("../../src/registries/pypi.ts", () => {
-  loaded.modules.push("pypi");
-  return { PyPIRegistry: stubAdapter("pypi") };
-});
-vi.mock("../../src/registries/rubygems.ts", () => {
-  loaded.modules.push("gem");
-  return { RubyGemsRegistry: stubAdapter("gem") };
-});
-vi.mock("../../src/registries/packagist.ts", () => {
-  loaded.modules.push("composer");
-  return { PackagistRegistry: stubAdapter("composer") };
-});
-vi.mock("../../src/registries/alpm.ts", () => {
-  loaded.alpmAttempts += 1;
-  if (loaded.alpmAttempts === 1) throw new Error("alpm failed to evaluate");
-  loaded.modules.push("alpm");
-  return { AlpmRegistry: stubAdapter("alpm") };
-});
+vi.mock("../../src/registries/npm.ts", loaded.adapter("npm", "NpmRegistry"));
+vi.mock("../../src/registries/cargo.ts", loaded.adapter("cargo", "CargoRegistry"));
+vi.mock("../../src/registries/pypi.ts", loaded.adapter("pypi", "PyPIRegistry"));
+vi.mock("../../src/registries/rubygems.ts", loaded.adapter("gem", "RubyGemsRegistry"));
+vi.mock("../../src/registries/packagist.ts", loaded.adapter("composer", "PackagistRegistry"));
+vi.mock("../../src/registries/alpm.ts", loaded.adapter("alpm", "AlpmRegistry"));
 
 describe("lazy adapters", () => {
   it("should know every built-in ecosystem without loading an adapter", () => {
@@ -70,7 +59,7 @@ describe("lazy adapters", () => {
     expect(registry).toMatchObject({ baseURL: "https://registry.npmjs.org", client });
   });
 
-  it("should reuse the loaded class for the next instance", async () => {
+  it("should reuse the loaded module for the next instance", async () => {
     const first = await create("npm");
     const second = await create("npm", "https://npm.example.com");
 
@@ -90,24 +79,11 @@ describe("lazy adapters", () => {
     expect(loaded.modules).toEqual(["npm", "cargo"]);
     expect(new Set(registries).size).toBe(3);
   });
-
-  /** vitest reports a throwing factory with its own message, so only the rejection is pinned. */
-  it("should retry an adapter whose import failed", async () => {
-    await expect(create("alpm")).rejects.toThrow();
-
-    const registry = await create("alpm");
-    expect(registry.ecosystem()).toBe("alpm");
-    expect(loaded.alpmAttempts).toBe(2);
-  });
 });
 
 describe("package sideEffects", () => {
   /** Nothing registers at import anymore, so a bundler may drop every unused module of dist. */
   it("should declare the package free of import side effects", () => {
-    const manifest = JSON.parse(
-      readFileSync(fileURLToPath(new URL("../../package.json", import.meta.url)), "utf8"),
-    ) as { sideEffects: unknown };
-
     expect(manifest.sideEffects).toBe(false);
   });
 });

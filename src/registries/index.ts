@@ -1,12 +1,11 @@
 import type { RegistryEntry } from "../core/registry.ts";
 
 /**
- * Every adapter shipped with the package, in registration order.
+ * Every adapter shipped with the package, in manifest order.
  *
  * Only the key and the default URL live here. The adapter module is imported on the first
  * `create()` for its key, so nothing runs when the package is imported and a bundler splits each
- * adapter into its own chunk. An adapter missing from this list is invisible to `create()`;
- * `test/unit/registries.test.ts` loads every entry and checks the key against the class.
+ * adapter into its own chunk. An adapter missing from this list is invisible to `create()`.
  */
 export const builtins: readonly RegistryEntry[] = [
   {

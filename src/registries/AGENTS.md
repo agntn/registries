@@ -39,7 +39,7 @@ src/registries/
 
 - Do not call `fetch` directly; use `Client`.
 - Do not return raw upstream payloads through public methods.
-- Do not call `register()` at module scope; a new adapter gets a manifest entry in `index.ts` and a build input in `build.config.ts`.
+- Do not call `register()` at module scope; a new adapter gets a manifest entry in `index.ts` and the build picks its file up from the directory.
 
 ## NOTES
 

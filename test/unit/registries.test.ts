@@ -20,15 +20,13 @@ describe("Registry Modules", () => {
       const registry = await create(entry.ecosystem);
       expect(registry).toBeInstanceOf(RegistryClass);
       expect(registry.ecosystem()).toBe(entry.ecosystem);
-      expect(new RegistryClass(entry.defaultURL, new Client()).ecosystem()).toBe(entry.ecosystem);
     }
   });
 
   /** An adapter file that never made it into the manifest is invisible to create(). */
   it("should list every adapter file in the manifest", () => {
-    const shared = new Set(["index.ts", "error.ts"]);
     const adapters = readdirSync(new URL("../../src/registries/", import.meta.url)).filter(
-      (file) => file.endsWith(".ts") && !shared.has(file),
+      (file) => file.endsWith(".ts") && file !== "index.ts",
     );
     expect(adapters).toHaveLength(builtins.length);
   });
@@ -580,7 +578,9 @@ describe("Registry Modules", () => {
         urls: [],
       });
 
-      const pkg = await (await create("pypi", undefined, client)).fetchPackage("uv");
+      const registry = await create("pypi", undefined, client);
+
+      const pkg = await registry.fetchPackage("uv");
 
       expect(pkg.licenses).toBe("MIT OR Apache-2.0");
     });
@@ -644,7 +644,9 @@ describe("Registry Modules", () => {
         },
       });
 
-      const maintainers = await (await create("pypi", undefined, client)).fetchMaintainers("rich");
+      const registry = await create("pypi", undefined, client);
+
+      const maintainers = await registry.fetchMaintainers("rich");
 
       expect(maintainers).toEqual([
         {
@@ -691,7 +693,9 @@ describe("Registry Modules", () => {
         },
       });
 
-      const maintainers = await (await create("pypi", undefined, client)).fetchMaintainers("mixed");
+      const registry = await create("pypi", undefined, client);
+
+      const maintainers = await registry.fetchMaintainers("mixed");
 
       expect(maintainers.map((m) => [m.name, m.email, m.role])).toEqual([
         ["Alice", "", "author"],

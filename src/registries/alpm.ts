@@ -1,10 +1,9 @@
 import type { Client } from "../core/client.ts";
 import type { Dependency, Maintainer, Package, URLBuilder, Version } from "../core/types.ts";
 import { Registry } from "../core/registry.ts";
-import { NotFoundError } from "../core/errors.ts";
+import { NotFoundError, rethrowFetchError } from "../core/errors.ts";
 import { combineLicenses } from "../core/license.ts";
 import { buildPURL } from "../core/purl.ts";
-import { rethrowFetchError } from "./error.ts";
 
 const AUR_BASE_URL = "https://aur.archlinux.org";
 

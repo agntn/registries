@@ -1,14 +1,9 @@
-import { create, ecosystems } from "@agntn/registries";
+import { builtins } from "@agntn/registries/registries";
 
-/** The ecosystems the library ships, each adapter loaded once to confirm the key it answers to. */
-export default defineEventHandler(async (event) => {
+/** The ecosystems the library ships, read from the manifest so no adapter loads for a listing. */
+export default defineEventHandler((event) => {
   markPublic(event, 60 * 60);
   return {
-    ecosystems: await Promise.all(
-      ecosystems().map(async (key) => {
-        const registry = await create(key);
-        return { key, ecosystem: registry.ecosystem() };
-      }),
-    ),
+    ecosystems: builtins.map(({ ecosystem, defaultURL }) => ({ key: ecosystem, defaultURL })),
   };
 });

@@ -77,3 +77,27 @@ export class InvalidPURLError extends PkioError {
     this.purl = purl;
   }
 }
+
+/**
+ * Rethrow a fetch failure as the core error an adapter owes its caller.
+ *
+ * A 404 from the registry becomes `NotFoundError` for the package; every other failure is the
+ * `HTTPError` the client already threw.
+ *
+ * @param error - The value the client rejected with.
+ * @param ecosystem - Ecosystem key of the adapter.
+ * @param packageName - Package the request was about.
+ * @param version - Version the request was about, when it had one.
+ * @returns {never} Always throws.
+ */
+export function rethrowFetchError(
+  error: unknown,
+  ecosystem: string,
+  packageName: string,
+  version = "",
+): never {
+  if (error instanceof HTTPError && error.isNotFound()) {
+    throw new NotFoundError(ecosystem, packageName, version);
+  }
+  throw error;
+}

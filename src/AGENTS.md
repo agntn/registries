@@ -30,8 +30,7 @@ src/
 
 ## CONVENTIONS
 
-- Direction is inward: commands/registries/cache depend on `core`, not the reverse. `core/registry.ts` reads only the manifest in `registries/index.ts` and imports an adapter through its `load()` on demand.
-- Nothing runs at import: no module-scope calls or registrations; `sideEffects` is `false`.
+- Direction is inward: commands/registries/cache depend on `core`, not the reverse; the manifest exception is described in the root guide.
 - Use `.ts` import suffixes consistently.
 - Keep barrels (`src/index.ts`, `src/core/index.ts`, `src/cache/index.ts`) as canonical export surfaces.
 

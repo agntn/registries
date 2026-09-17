@@ -4,7 +4,7 @@ import { Registry } from "../core/registry.ts";
 import { normalizeLicense } from "../core/license.ts";
 import { normalizeRepositoryURL } from "../core/repository.ts";
 import { buildPURL } from "../core/purl.ts";
-import { rethrowFetchError } from "./error.ts";
+import { rethrowFetchError } from "../core/errors.ts";
 
 interface NpmPerson {
   readonly name?: string;

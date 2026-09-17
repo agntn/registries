@@ -51,13 +51,13 @@ docs/                # Docus site: guide, registry pages, live lookup explorer o
 
 ### Where to put new code
 
-| What                  | Where                                                                                        |
-| --------------------- | -------------------------------------------------------------------------------------------- |
-| New ecosystem adapter | `src/registries/<name>.ts` + entry in `src/registries/index.ts` + input in `build.config.ts` |
-| New CLI command       | `src/commands/<name>.ts` + wire in `src/cli.ts`                                              |
-| Public API addition   | export from `src/index.ts`                                                                   |
-| Shared type/contract  | `src/core/types.ts`                                                                          |
-| New unit test         | `test/unit/<module>.test.ts`                                                                 |
+| What                  | Where                                                           |
+| --------------------- | --------------------------------------------------------------- |
+| New ecosystem adapter | `src/registries/<name>.ts` + entry in `src/registries/index.ts` |
+| New CLI command       | `src/commands/<name>.ts` + wire in `src/cli.ts`                 |
+| Public API addition   | export from `src/index.ts`                                      |
+| Shared type/contract  | `src/core/types.ts`                                             |
+| New unit test         | `test/unit/<module>.test.ts`                                    |
 
 ## Code Conventions
 
@@ -153,4 +153,4 @@ docs/                # Docus site: guide, registry pages, live lookup explorer o
 - Bulk fetch helpers skip failed packages instead of failing all — this is intentional.
 - Cache is optional decorator, never mandatory in core flows.
 - e2e smoke tests are network-sensitive — failures may be transient.
-- Each adapter is its own build entry (`dist/registries/<name>.mjs`, exported as `./registries/*`), so the manifest's `import()` resolves to a stable file and `dist/index.mjs` never pulls an adapter in statically. `test/unit/lazy-loading.test.ts` pins what `create()` imports and that `sideEffects` stays `false`; `test/unit/registries.test.ts` pins the manifest against the adapter files.
+- `build.config.ts` reads `src/registries/` and makes every adapter its own entry (`dist/registries/<name>.mjs`, exported as `./registries/*`), so the manifest's `import()` resolves to a stable file and `dist/index.mjs` never pulls an adapter in statically.
