@@ -1,326 +1,233 @@
 # @agntn/registries
 
-[![npm version](https://img.shields.io/npm/v/%40agntn%2Fregistries?style=flat&colorA=130f40&colorB=474787)](https://npmjs.com/package/@agntn/registries)
-[![npm downloads](https://img.shields.io/npm/dm/%40agntn%2Fregistries?style=flat&colorA=130f40&colorB=474787)](https://npm.chart.dev/@agntn/registries)
-[![license](https://img.shields.io/github/license/agntn/registries?style=flat&colorA=130f40&colorB=474787)](https://github.com/agntn/registries/blob/main/LICENSE)
+[![npm version](https://npmx.dev/api/registry/badge/version/@agntn/registries)](https://npmx.dev/package/@agntn/registries)
+[![npm downloads](https://npmx.dev/api/registry/badge/downloads/@agntn/registries)](https://npmx.dev/package/@agntn/registries)
+[![license](https://npmx.dev/api/registry/badge/license/@agntn/registries)](https://npmx.dev/package/@agntn/registries)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/agntn/registries)
 
-> Query npm, PyPI, crates.io, RubyGems, Packagist, and Arch Linux with one API. PURL-native, typed, cached.
+📦 Six package registries, one `Package`. Ask npm, crates.io, PyPI, RubyGems, Packagist or the AUR about a package and the same object comes back, from your terminal, your TypeScript or your agent. `pkg:npm/lodash` is the whole address.
 
 ## Why?
 
-If you need package metadata from multiple registries, you currently have two options: call each registry's REST API yourself (they all work differently), or depend on a third-party aggregation service.
+Six registries, six APIs, and no two of them agree on what a package looks like. npm dumps one big JSON, crates.io makes you ask three times, PyPI has two license fields and which one is filled depends on how old the upload is, and Arch is two registries wearing one PURL type. Write a client for each and you've got six clients for one question, and a license wrong somewhere, everyone does. So: one `Registry` in front of all of them, addressed by [package URL](https://github.com/package-url/purl-spec), and `pkg:cargo/serde` is just `pkg:npm/lodash` with a different string.
 
-There is no embeddable TypeScript library that normalizes across registries. The closest thing is [git-pkgs/registries](https://github.com/git-pkgs/registries) in Go, which covers 25 ecosystems but is Go-only. Aggregation APIs like [ecosyste.ms](https://ecosyste.ms/) and [deps.dev](https://deps.dev/) exist, but they are external services you can't bundle into your own tool.
+Everything longer than this file is at [registries.agntn.dev](https://registries.agntn.dev), lookup page included, it runs the library live.
 
-@agntn/registries fills that gap. One `fetchPackage` call, same response shape, regardless of whether the package lives on npm or Packagist. Uses [PURL (ECMA-427)](https://github.com/package-url/purl-spec) for addressing, so `pkg:npm/lodash` and `pkg:cargo/serde` resolve through the same code path. Storage-backed caching with a lockfile keeps things fast on repeated lookups.
+## ✨ Features
 
-Docs and the live lookup explorer: [registries.agntn.dev](https://registries.agntn.dev). The source lives in [`docs/`](./docs); run `pnpm docs` after `pnpm build` for a local copy.
+- 🧩 **Six registries, one shape.** npm, crates.io, PyPI, RubyGems, Packagist, Arch with the AUR. `Package`, `Version`, `Dependency`, `Maintainer`, same fields everywhere.
+- 🔗 **PURL is the address.** `pkg:cargo/serde@1.0.229`, `pkg:alpm/aur/paru`, that's [ECMA-427](https://github.com/package-url/purl-spec) and it goes in everywhere. The CLI lets you skip the `pkg:`.
+- 🏷️ **Licenses come back as SPDX.** `MIT License` is `MIT`, `Apache 2.0` is `Apache-2.0`, compare them without a regex.
+- 💾 **Cache with a lockfile.** An hour for metadata, half an hour for versions, a day for deps and maintainers, sha256 on every entry.
+- ⌨️ **A CLI that pipes.** `--json` is the object the library returns, except `versions`, which stops at its `--limit`. `--no-cache` for when you don't trust yesterday.
+- 🔁 **Retries you don't write.** Five of them, exponential backoff, `Retry-After` respected when a registry says 429.
+- 📚 **Bulk that shrugs.** Fifteen packages at a time, and one that fails is just missing from the answer, not an exception for everyone else.
+- 🤖 **Library, CLI, AI SDK, MCP, Pi and OMP.** Six read-only tools on the agent side, same code behind all of them.
+- 🪶 **ESM only.** [obuild](https://github.com/unjs/obuild), no CommonJS, Node.js 22.6 or newer.
 
-## Features
-
-- 🔍 **Single API, six registries** - npm, PyPI, crates.io, RubyGems, Packagist, Arch Linux (official + AUR)
-- 📦 **PURL-native** - [ECMA-427](https://github.com/package-url/purl-spec) identifiers as first-class input
-- 🏷️ **Normalized data model** - same `Package`, `Version`, `Dependency`, `Maintainer` types everywhere
-- 💾 **Cache on unstorage with a lockfile** - sha256 integrity checks, configurable TTL
-- ⌨️ **CLI included** - `registries info npm/lodash`, `registries versions cargo/serde`, `registries deps pypi/flask@3.1.1`
-- 🔁 **Retry + backoff** - exponential backoff with jitter, rate limiter interface
-- 🪶 **ESM-only, zero CJS** - built with [obuild](https://github.com/unjs/obuild)
-
-## Install
+## 📦 Install
 
 ```bash
 pnpm add @agntn/registries
 ```
 
-For the AI SDK tool (`@agntn/registries/ai` subpath), also install `ai` and `zod`:
+Node.js 22.6 or newer. `ai` and `zod` only if you want the AI SDK tool, nothing else touches them:
 
 ```bash
 pnpm add ai zod
 ```
 
-## Quick start
-
-### API
-
-```ts
-import { fetchPackageFromPURL } from "@agntn/registries";
-
-const pkg = await fetchPackageFromPURL("pkg:npm/lodash");
-
-console.log(pkg.name); // "lodash"
-console.log(pkg.latestVersion); // "4.17.23"
-console.log(pkg.licenses); // "MIT"
-console.log(pkg.repository); // "https://github.com/lodash/lodash"
-```
-
-Works the same for any supported registry:
-
-```ts
-await fetchPackageFromPURL("pkg:cargo/serde");
-await fetchPackageFromPURL("pkg:pypi/flask");
-await fetchPackageFromPURL("pkg:gem/rails");
-await fetchPackageFromPURL("pkg:composer/laravel/framework");
-await fetchPackageFromPURL("pkg:alpm/arch/pacman");
-```
-
-### CLI
-
-The `pkg:` prefix is optional in the CLI. `npm/lodash` works just as well:
+## 🚀 First call
 
 ```bash
-registries info npm/lodash
-registries versions cargo/serde
-registries deps pypi/flask@3.1.1
-registries maintainers gem/rails
+npx @agntn/registries info npm/lodash
+```
+
+```
+  lodash@4.18.1
+  Lodash modular utilities.
+
+  License:    MIT
+  Repository: https://github.com/lodash/lodash
+  Homepage:   https://lodash.com/
+  Registry:   https://www.npmjs.com/package/lodash
+  Keywords:   modules, stdlib, util
+  Ecosystem:  npm
+```
+
+No key, no config, no `pkg:`. From here on it's plain `registries`, which after `pnpm add` means `pnpm exec registries`, or `pnpm add -g @agntn/registries` once and it's on your PATH. And it really doesn't care which registry, try a crate:
+
+```bash
+registries info cargo/serde
+```
+
+```
+  serde@1.0.229
+  A generic serialization/deserialization framework
+
+  License:    MIT OR Apache-2.0
+  Repository: https://github.com/serde-rs/serde
+  Homepage:   https://serde.rs
+  Docs:       https://docs.rs/serde
+  Registry:   https://crates.io/crates/serde
+  Keywords:   no_std, serde, serialization
+  Ecosystem:  cargo
+```
+
+Same lines, plus `Docs`, because crates.io knows about docs.rs. Nice of them. Versions come twenty at a time, `--limit` if that's too many or too few:
+
+```bash
+registries versions gem/rails --limit 5
+```
+
+```
+  rails — 519 versions
+
+  8.0.5.1  2026-07-29
+  7.2.3.2  2026-07-29
+  8.1.3.1  2026-07-29
+  8.1.3  2026-03-24
+  8.0.5  2026-03-24
+
+  ... and 514 more (use --limit to show more)
+```
+
+Three branches patched on the same Wednesday. Somebody at Rails had a day ;)
+
+No version on `deps`? It takes the latest and says so:
+
+```bash
 registries deps alpm/aur/paru
 ```
 
-Add `--json` for machine-readable output, `--no-cache` to skip the cache.
+```
+ℹ No version specified, using latest: 2.1.0-2
 
-### AI SDK tool
+  aur/paru@2.1.0-2 — 6 dependencies
 
-`@agntn/registries/ai` exports a tool for AI SDK apps that needs no wiring:
+  runtime (3)
+    git
+    pacman
+    libalpm.so >=14
 
-```ts
-import { generateText } from "ai";
-import { packageTool } from "@agntn/registries/ai";
+  build (1)
+    cargo
 
-const { text } = await generateText({
-  model: yourModel,
-  tools: { packageRegistry: packageTool },
-  prompt: "Show me the latest metadata for pkg:npm/lodash and then list its maintainers.",
-});
+  optional (2)
+    bat  (optional)
+    devtools  (optional)
 ```
 
-The tool supports these operations through one input schema:
+An AUR helper that depends on pacman. Fair enough. `alpm/pacman` is short for `alpm/arch/pacman`, the AUR you have to name.
 
-```ts
-// { operation: 'package', purl: 'pkg:npm/lodash' }
-// { operation: 'versions', purl: 'pkg:cargo/serde' }
-// { operation: 'dependencies', purl: 'pkg:pypi/flask@3.1.1' }
-// { operation: 'maintainers', purl: 'pkg:gem/rails' }
-// { operation: 'bulk-packages', purls: ['pkg:npm/lodash', 'pkg:cargo/serde'], concurrency?: number }
-```
-
-### MCP
-
-The package ships an MCP server with six read-only tools for metadata, versions, dependencies, maintainers, bulk lookups, and ecosystem discovery:
+A few more, same rules:
 
 ```bash
-claude mcp add registries --scope user -- npx @agntn/registries mcp
+registries deps pypi/flask@3.1.1
+registries maintainers gem/rails
+registries info composer/laravel/framework
+registries info npm/@vue/reactivity
+registries versions cargo/serde --json
+registries cache status
 ```
 
-Hosts with their own transport can import `createMcpServer` from `@agntn/registries/mcp`.
+### Commands
 
-### Pi and OMP extensions
+| Command       | What it does                                       | Example                                   |
+| ------------- | -------------------------------------------------- | ----------------------------------------- |
+| `info`        | Name, latest version, license, repo, docs          | `registries info npm/lodash`              |
+| `versions`    | Newest first, twenty unless you `--limit`          | `registries versions gem/rails --limit 5` |
+| `deps`        | One version's dependencies, grouped by scope       | `registries deps pypi/flask@3.1.1`        |
+| `maintainers` | Who publishes it, email and role when there is one | `registries maintainers gem/rails`        |
+| `cache`       | `status`, `path`, `prune`, `clear`                 | `registries cache status`                 |
+| `mcp`         | The MCP server on stdio                            | `registries mcp`                          |
 
-Install the published package in OMP:
+`--json` and `--no-cache` on every lookup, `--limit` on `versions`. Where the cache lives and what each command prints is in the [CLI guide](https://registries.agntn.dev/guide/cli).
 
-```bash
-omp install @agntn/registries
-```
-
-From a source checkout, use `omp install .`. The package manifests point OMP and Pi at their matching extension entrypoints, and both expose the same six read-only tools as MCP.
-
-## Registries
-
-| Ecosystem  | PURL type          | Registry                         |
-| ---------- | ------------------ | -------------------------------- |
-| npm        | `pkg:npm/...`      | registry.npmjs.org               |
-| Cargo      | `pkg:cargo/...`    | crates.io                        |
-| PyPI       | `pkg:pypi/...`     | pypi.org                         |
-| RubyGems   | `pkg:gem/...`      | rubygems.org                     |
-| Packagist  | `pkg:composer/...` | packagist.org                    |
-| Arch Linux | `pkg:alpm/...`     | archlinux.org, aur.archlinux.org |
-
-Scoped packages work as expected: `pkg:npm/%40vue/core` or `npm/@vue/core` in the CLI.
-
-Arch Linux packages use a namespace: `pkg:alpm/arch/pacman` (or just `pkg:alpm/pacman`) for official repos, `pkg:alpm/aur/paru` for AUR. Official packages default to `arch` when the namespace is omitted; AUR requires the explicit `aur` namespace.
-
-## API reference
-
-### PURL helpers
+## 🧠 Library
 
 ```ts
 import {
   fetchPackageFromPURL,
-  fetchVersionsFromPURL,
   fetchDependenciesFromPURL,
-  fetchMaintainersFromPURL,
-  bulkFetchPackages,
+  createCached,
+  parsePURL,
 } from "@agntn/registries";
 
-// Single lookups
-const pkg = await fetchPackageFromPURL("pkg:npm/lodash");
-const versions = await fetchVersionsFromPURL("pkg:cargo/serde");
+const lodash = await fetchPackageFromPURL("pkg:npm/lodash");
+console.log(lodash.latestVersion, lodash.licenses, lodash.repository);
+// 4.18.1 MIT https://github.com/lodash/lodash
+
 const deps = await fetchDependenciesFromPURL("pkg:pypi/flask@3.1.1");
-const maintainers = await fetchMaintainersFromPURL("pkg:gem/rails");
-
-// Bulk - fetches up to 15 packages concurrently
-const packages = await bulkFetchPackages(["pkg:npm/lodash", "pkg:cargo/serde", "pkg:pypi/flask"]);
-```
-
-### Direct registry access
-
-For more control, instantiate a concrete registry class:
-
-```ts
-import { Client } from "@agntn/registries";
-import { NpmRegistry } from "@agntn/registries";
-
-const npm = new NpmRegistry("https://registry.npmjs.org", new Client());
-const pkg = await npm.fetchPackage("lodash");
-const versions = await npm.fetchVersions("lodash");
-const deps = await npm.fetchDependencies("lodash", "4.17.21");
-```
-
-Use `create("npm")` when you prefer lookup through the registered ecosystem classes.
-
-### Cached registry
-
-Wrap any registry with caching:
-
-```ts
-import { createCached } from "@agntn/registries";
+console.log(deps.map((dep) => `${dep.name} ${dep.requirements}`));
+// [ 'blinker >=1.9.0', 'click >=8.1.3', 'importlib-metadata >=3.6.0', ... ]
 
 const npm = createCached("npm");
+await npm.fetchPackage("lodash"); // the network
+await npm.fetchPackage("lodash"); // the cache, for the next hour
 
-// First call hits the network and writes to cache
-const pkg = await npm.fetchPackage("lodash");
-
-// Second call reads from cache (if TTL hasn't expired)
-const same = await npm.fetchPackage("lodash");
-```
-
-By default, @agntn/registries uses filesystem storage and follows platform cache conventions: `~/.cache/registries` on Linux (XDG), `~/Library/Caches/registries` on macOS, `%LOCALAPPDATA%\registries\cache` on Windows. Override with `REGISTRIES_CACHE_DIR` env var.
-
-For edge/serverless runtimes, configure a custom unstorage driver (example: Cloudflare KV binding):
-
-```ts
-import { configureStorage, createCached } from "@agntn/registries";
-import { createStorage } from "unstorage";
-import cloudflareKVBindingDriver from "unstorage/drivers/cloudflare-kv-binding";
-
-configureStorage(
-  createStorage({
-    driver: cloudflareKVBindingDriver({ binding: "REGISTRIES_CACHE" }),
-  }),
-);
-
-const npm = createCached("npm");
-const pkg = await npm.fetchPackage("lodash");
-```
-
-### PURL parsing
-
-```ts
-import { parsePURL, buildPURL, fullName } from "@agntn/registries";
-
-const parsed = parsePURL("pkg:npm/%40vue/core@3.5.0");
+parsePURL("pkg:npm/%40vue/core@3.5.0");
 // { type: 'npm', namespace: '@vue', name: 'core', version: '3.5.0', qualifiers: {}, subpath: '' }
-
-fullName(parsed); // "@vue/core"
-
-buildPURL({ type: "cargo", name: "serde", version: "1.0.0" });
-// "pkg:cargo/serde@1.0.0"
 ```
 
-### Types
+That's the library, more or less. `bulkFetchPackages` for a list, `create("npm")` if you'd rather hold the adapter yourself, `createCached("npm")` for the same thing with the cache in front. Errors are one family, `NotFoundError`, `InvalidPURLError`, `UnknownEcosystemError`, `RateLimitError`, `HTTPError`, and you can guess which is which. Cache directory, storage drivers and the rest of the API: [Lookups](https://registries.agntn.dev/guide/lookups), [PURL](https://registries.agntn.dev/guide/purl), [Cache](https://registries.agntn.dev/guide/cache).
 
-```ts
-import type {
-  Package,
-  Version,
-  Dependency,
-  Maintainer,
-  Registry,
-  ParsedPURL,
-} from "@agntn/registries";
-```
+## 🗺️ Registries
 
-## CLI
+| Ecosystem  | PURL type          | Talks to                         | Example                             |
+| ---------- | ------------------ | -------------------------------- | ----------------------------------- |
+| npm        | `pkg:npm/...`      | registry.npmjs.org               | `npm/@vue/reactivity`               |
+| Cargo      | `pkg:cargo/...`    | crates.io                        | `cargo/serde@1.0.229`               |
+| PyPI       | `pkg:pypi/...`     | pypi.org                         | `pypi/flask@3.1.1`                  |
+| RubyGems   | `pkg:gem/...`      | rubygems.org                     | `gem/rails`                         |
+| Packagist  | `pkg:composer/...` | packagist.org                    | `composer/laravel/framework`        |
+| Arch Linux | `pkg:alpm/...`     | archlinux.org, aur.archlinux.org | `alpm/arch/pacman`, `alpm/aur/paru` |
+
+Scoped npm is `npm/@vue/reactivity` on the CLI and `pkg:npm/%40vue/reactivity` as a proper PURL, both fine. Arch is the one with a namespace, `arch` by default, `aur` when you mean it. One page per registry: [Registries](https://registries.agntn.dev/registries).
+
+## 🤖 Agents
 
 ```bash
-registries <command> [options]
+registries mcp
+pi install npm:@agntn/registries
+omp install @agntn/registries
 ```
 
-| Command                         | Description                                            |
-| ------------------------------- | ------------------------------------------------------ |
-| `registries info <purl>`        | Package metadata (name, license, repo, latest version) |
-| `registries versions <purl>`    | List all published versions                            |
-| `registries deps <purl>`        | Dependencies for a specific version                    |
-| `registries maintainers <purl>` | Package maintainers / authors                          |
-| `registries mcp`                | Start the MCP server over stdio                        |
-| `registries cache status`       | Show cache stats (entries, freshness)                  |
-| `registries cache path`         | Print cache directory path                             |
-| `registries cache clear`        | Remove all cached data                                 |
-| `registries cache prune`        | Remove stale entries                                   |
-
-### Options
-
-| Flag         | Description                              |
-| ------------ | ---------------------------------------- |
-| `--json`     | Output as JSON                           |
-| `--no-cache` | Bypass cache, always fetch from registry |
-
-## Caching
-
-@agntn/registries stores fetched data and freshness metadata in unstorage. Default TTLs:
-
-| Data type        | TTL        |
-| ---------------- | ---------- |
-| Package metadata | 1 hour     |
-| Version list     | 30 minutes |
-| Dependencies     | 24 hours   |
-| Maintainers      | 24 hours   |
-
-Each cached entry has a sha256 integrity hash. If the stored data doesn't match the hash, @agntn/registries refetches automatically.
-
-## Data model
-
-Every registry returns the same normalized types:
-
-```ts
-interface Package {
-  name: string;
-  description: string;
-  homepage: string;
-  documentation: string; // docs URL (docs.rs, readthedocs, rubydoc, etc.)
-  repository: string;
-  licenses: string; // normalized to SPDX
-  keywords: string[];
-  namespace: string; // e.g. "@vue" for npm scoped packages
-  latestVersion: string;
-  metadata: Record<string, unknown>;
-}
-
-interface Version {
-  number: string;
-  publishedAt: Date | null;
-  licenses: string;
-  integrity: string;
-  status: "" | "yanked" | "deprecated" | "retracted";
-  metadata: Record<string, unknown>;
-}
-
-interface Dependency {
-  name: string;
-  requirements: string; // version constraint
-  scope: "runtime" | "development" | "test" | "build" | "optional";
-  optional: boolean;
-}
-
-interface Maintainer {
-  uuid: string;
-  login: string;
-  name: string;
-  email: string;
-  url: string;
-  role: string;
+```json
+{
+  "mcpServers": {
+    "registries": { "command": "npx", "args": ["-y", "@agntn/registries", "mcp"] }
+  }
 }
 ```
 
-## License
+The agent side is six read-only tools, `registries_package` through `registries_ecosystems`, and MCP, Pi and OMP all run the same code behind them. The AI SDK gets `packageTool` from `@agntn/registries/ai`, one tool, five operations: [Agents guide](https://registries.agntn.dev/guide/agents). And whatever a package says about itself was typed by whoever published it, so it's data for the model, not orders.
+
+## 🚫 What this does not do
+
+Install anything. No tarballs, no `node_modules`, it reads what a registry says and stops there. No semver either, `pkg:npm/lodash@^4` is a package that doesn't exist, give it a real version or take the latest. Vulnerabilities? Different job.
+
+## 🧩 Adding a registry
+
+Want a seventh? Extend `Registry`, six methods, `register("hex", "https://hex.pm", HexRegistry)`, and `pkg:hex/phoenix` works everywhere the built-ins do. [Custom registries](https://registries.agntn.dev/guide/custom) builds the Hex one from scratch, so start there.
+
+## 🛠️ Development
+
+```bash
+pnpm install
+pnpm dev:prepare   # obuild --stub, src/ changes show up without a build
+pnpm fmt           # oxlint --fix and oxfmt
+pnpm lint          # builds first, then oxlint and oxfmt --check
+pnpm typecheck     # library and tests, then a build and both extensions
+pnpm test:run
+pnpm build         # obuild
+pnpm docs          # the Docus site on :3000, after pnpm build
+```
+
+## 💛 Thanks
+
+Anthropic and OpenAI both run a program for open source, [Claude for Open Source](https://claude.com/contact-sales/claude-for-oss) and [Codex for Open Source](https://developers.openai.com/community/codex-for-oss), and this package is one of the things that came out of them <3
+
+## 📄 License
 
 [MIT](./LICENSE)
