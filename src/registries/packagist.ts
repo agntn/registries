@@ -1,11 +1,10 @@
 import type { Client } from "../core/client.ts";
 import type { Dependency, Maintainer, Package, URLBuilder, Version } from "../core/types.ts";
-import { Registry, register } from "../core/registry.ts";
-import { NotFoundError, InvalidPURLError } from "../core/errors.ts";
+import { Registry } from "../core/registry.ts";
+import { NotFoundError, InvalidPURLError, rethrowFetchError } from "../core/errors.ts";
 import { combineLicenses } from "../core/license.ts";
 import { normalizeRepositoryURL } from "../core/repository.ts";
 import { buildPURL } from "../core/purl.ts";
-import { rethrowFetchError } from "./error.ts";
 
 /** Packagist API response for a single package. */
 interface PackagistPackageResponse {
@@ -300,5 +299,3 @@ export class PackagistRegistry extends Registry {
     return name === "php" || name.startsWith("ext-");
   }
 }
-
-register("composer", "https://packagist.org", PackagistRegistry);

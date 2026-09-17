@@ -162,7 +162,7 @@ const deps = await fetchDependenciesFromPURL("pkg:pypi/flask@3.1.1");
 console.log(deps.map((dep) => `${dep.name} ${dep.requirements}`));
 // [ 'blinker >=1.9.0', 'click >=8.1.3', 'importlib-metadata >=3.6.0', ... ]
 
-const npm = createCached("npm");
+const npm = await createCached("npm");
 await npm.fetchPackage("lodash"); // the network
 await npm.fetchPackage("lodash"); // the cache, for the next hour
 
@@ -170,7 +170,7 @@ parsePURL("pkg:npm/%40vue/core@3.5.0");
 // { type: 'npm', namespace: '@vue', name: 'core', version: '3.5.0', qualifiers: {}, subpath: '' }
 ```
 
-That's the library, more or less. `bulkFetchPackages` for a list, `create("npm")` if you'd rather hold the adapter yourself, `createCached("npm")` for the same thing with the cache in front. Errors are one family, `NotFoundError`, `InvalidPURLError`, `UnknownEcosystemError`, `RateLimitError`, `HTTPError`, and you can guess which is which. Cache directory, storage drivers and the rest of the API: [Lookups](https://registries.agntn.dev/guide/lookups), [PURL](https://registries.agntn.dev/guide/purl), [Cache](https://registries.agntn.dev/guide/cache).
+That's the library, more or less. `bulkFetchPackages` for a list, `await create("npm")` if you'd rather hold the adapter yourself, `await createCached("npm")` for the same thing with the cache in front. The adapter module loads on that first call. Importing the package runs nothing. Errors are one family, `NotFoundError`, `InvalidPURLError`, `UnknownEcosystemError`, `RateLimitError`, `HTTPError`, and you can guess which is which. Cache directory, storage drivers and the rest of the API: [Lookups](https://registries.agntn.dev/guide/lookups), [PURL](https://registries.agntn.dev/guide/purl), [Cache](https://registries.agntn.dev/guide/cache).
 
 ## 🗺️ Registries
 
@@ -221,7 +221,7 @@ pnpm lint          # builds first, then oxlint and oxfmt --check
 pnpm typecheck     # library and tests, then a build and both extensions
 pnpm test:run
 pnpm build         # obuild
-pnpm docs          # the Docus site on :3000, after pnpm build
+pnpm docs          # the Docus site on :3000
 ```
 
 ## 💛 Thanks

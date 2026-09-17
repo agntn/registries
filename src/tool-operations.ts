@@ -1,4 +1,3 @@
-import "./registries/index.ts";
 import type { Client } from "./core/client.ts";
 import { InvalidPURLError, PkioError } from "./core/errors.ts";
 import { parsePURL } from "./core/purl.ts";

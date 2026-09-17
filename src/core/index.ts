@@ -1,6 +1,7 @@
 // Core
 export { Client, defaultClient } from "./client.ts";
 export { Registry, register, create, ecosystems, has } from "./registry.ts";
+export type { RegistryConstructor, RegistryEntry } from "./registry.ts";
 export { parsePURL, fullName, createFromPURL, buildPURL } from "./purl.ts";
 export { normalizeLicense, combineLicenses } from "./license.ts";
 export { normalizeRepositoryURL } from "./repository.ts";

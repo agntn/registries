@@ -5,7 +5,6 @@
  * These tests hit live APIs and may fail due to rate limiting or network issues.
  */
 import { create, ecosystems, has } from "../../src/core/registry.ts";
-import "../../src/registries/index.ts";
 
 const SMOKE_TIMEOUT = 60_000;
 
@@ -29,7 +28,7 @@ describe("registry smoke tests", () => {
 
   describe("npm — lodash", { timeout: SMOKE_TIMEOUT }, () => {
     it("fetchPackage", async () => {
-      const reg = create("npm");
+      const reg = await create("npm");
       const pkg = await reg.fetchPackage("lodash");
       expect(pkg.name).toBe("lodash");
       expect(pkg.licenses).toBeTruthy();
@@ -38,14 +37,14 @@ describe("registry smoke tests", () => {
     });
 
     it("fetchVersions", async () => {
-      const reg = create("npm");
+      const reg = await create("npm");
       const versions = await reg.fetchVersions("lodash");
       expect(versions.length).toBeGreaterThan(10);
       expect(versions[0]!.number).toBeTruthy();
     });
 
-    it("urls", () => {
-      const reg = create("npm");
+    it("urls", async () => {
+      const reg = await create("npm");
       const urls = reg.urls();
       expect(urls.registry("lodash")).toContain("npmjs.com");
       expect(urls.purl("lodash", "4.17.21")).toBe("pkg:npm/lodash@4.17.21");
@@ -54,7 +53,7 @@ describe("registry smoke tests", () => {
 
   describe("cargo — serde", { timeout: SMOKE_TIMEOUT }, () => {
     it("fetchPackage", async () => {
-      const reg = create("cargo");
+      const reg = await create("cargo");
       const pkg = await reg.fetchPackage("serde");
       expect(pkg.name).toBe("serde");
       expect(pkg.licenses).toBeTruthy();
@@ -64,7 +63,7 @@ describe("registry smoke tests", () => {
 
   describe("pypi — requests", { timeout: SMOKE_TIMEOUT }, () => {
     it("fetchPackage", async () => {
-      const reg = create("pypi");
+      const reg = await create("pypi");
       const pkg = await reg.fetchPackage("requests");
       expect(pkg.name).toBe("requests");
       expect(pkg.licenses).toBeTruthy();
@@ -74,7 +73,7 @@ describe("registry smoke tests", () => {
 
   describe("gem — rails", { timeout: SMOKE_TIMEOUT }, () => {
     it("fetchPackage", async () => {
-      const reg = create("gem");
+      const reg = await create("gem");
       const pkg = await reg.fetchPackage("rails");
       expect(pkg.name).toBe("rails");
       expect(pkg.licenses).toBeTruthy();
@@ -83,7 +82,7 @@ describe("registry smoke tests", () => {
 
   describe("composer — laravel/framework", { timeout: SMOKE_TIMEOUT }, () => {
     it("fetchPackage", async () => {
-      const reg = create("composer");
+      const reg = await create("composer");
       const pkg = await reg.fetchPackage("laravel/framework");
       expect(pkg.name).toBe("laravel/framework");
       expect(pkg.licenses).toBeTruthy();
@@ -93,7 +92,7 @@ describe("registry smoke tests", () => {
 
   describe("alpm — pacman (official)", { timeout: SMOKE_TIMEOUT }, () => {
     it("fetchPackage", async () => {
-      const reg = create("alpm");
+      const reg = await create("alpm");
       const pkg = await reg.fetchPackage("arch/pacman");
       expect(pkg.name).toBe("pacman");
       expect(pkg.licenses).toBeTruthy();
@@ -104,7 +103,7 @@ describe("registry smoke tests", () => {
 
   describe("alpm — yay (AUR)", { timeout: SMOKE_TIMEOUT }, () => {
     it("fetchPackage", async () => {
-      const reg = create("alpm");
+      const reg = await create("alpm");
       const pkg = await reg.fetchPackage("aur/yay");
       expect(pkg.name).toBe("yay");
       expect(pkg.namespace).toBe("aur");

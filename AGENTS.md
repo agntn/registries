@@ -14,7 +14,7 @@ pnpm fmt                  # oxlint --fix + oxfmt
 pnpm test                 # vitest watch mode
 pnpm test:run             # vitest single run (CI-style)
 pnpm release              # test + build + changelogen --release --push
-pnpm docs                 # Docus site + lookup explorer on :3000 (after pnpm build)
+pnpm docs                 # Docus site + lookup explorer on :3000
 pnpm docs:build           # Cloudflare Workers build of the docs
 ```
 
@@ -31,7 +31,7 @@ pnpm vitest run test/unit/registries.test.ts -t "npm"  # file + filter
 ```text
 src/
 ├── core/            # contracts, PURL parser, client, errors, normalization
-├── registries/      # per-ecosystem adapters (npm, pypi, cargo, rubygems, packagist)
+├── registries/      # per-ecosystem adapters (npm, pypi, cargo, rubygems, packagist, alpm) + the lazy manifest
 ├── cache/           # optional decorator: storage, lockfile TTL, integrity
 ├── commands/        # CLI subcommands (citty)
 ├── index.ts         # public API barrel
@@ -47,17 +47,17 @@ docs/                # Docus site: guide, registry pages, live lookup explorer o
 
 ### Dependency direction
 
-`commands/` and `registries/` depend on `core/`. `cache/` decorates `core/`. Never reverse.
+`commands/` and `registries/` depend on `core/`. `cache/` decorates `core/`. Never reverse. The one exception is the manifest: `core/registry.ts` reads `registries/index.ts`, which imports no adapter statically, and imports an adapter module through the entry's `load()` on the first `create()` for its key.
 
 ### Where to put new code
 
-| What                  | Where                                                            |
-| --------------------- | ---------------------------------------------------------------- |
-| New ecosystem adapter | `src/registries/<name>.ts` + import in `src/registries/index.ts` |
-| New CLI command       | `src/commands/<name>.ts` + wire in `src/cli.ts`                  |
-| Public API addition   | export from `src/index.ts`                                       |
-| Shared type/contract  | `src/core/types.ts`                                              |
-| New unit test         | `test/unit/<module>.test.ts`                                     |
+| What                  | Where                                                           |
+| --------------------- | --------------------------------------------------------------- |
+| New ecosystem adapter | `src/registries/<name>.ts` + entry in `src/registries/index.ts` |
+| New CLI command       | `src/commands/<name>.ts` + wire in `src/cli.ts`                 |
+| Public API addition   | export from `src/index.ts`                                      |
+| Shared type/contract  | `src/core/types.ts`                                             |
+| New unit test         | `test/unit/<module>.test.ts`                                    |
 
 ## Code Conventions
 
@@ -87,8 +87,8 @@ docs/                # Docus site: guide, registry pages, live lookup explorer o
 
 ### Registries
 
-- Plugin-based via abstract `Registry` subclasses registered with `register()` and resolved by `create()`. No hardcoded switch logic.
-- Importing `@agntn/registries` registers the built-in adapters as an intentional side effect.
+- Plugin-based via abstract `Registry` subclasses listed in the `builtins` manifest or registered with `register()`, resolved by `create()`. No hardcoded switch logic.
+- Nothing runs at import. `sideEffects: false` is a claim about every module: no `register()` calls, registrations or `process.env` reads at module scope. Built-in adapters load through the literal `import()` in their manifest entry, so `create()` is async and so is everything that resolves through it (`createFromPURL`, `createCached`, `resolvePURL`).
 - Each adapter normalizes upstream payloads into core types before returning.
 - No imports between adapters.
 
@@ -106,19 +106,21 @@ docs/                # Docus site: guide, registry pages, live lookup explorer o
 
 ## Key Symbols
 
-| Symbol         | Location                | Role                                                  |
-| -------------- | ----------------------- | ----------------------------------------------------- |
-| `Registry`     | `src/core/registry.ts`  | Abstract contract shared by adapters and decorators   |
-| `create`       | `src/core/registry.ts`  | Instantiates a registered class from an ecosystem key |
-| `createCached` | `src/cache/index.ts`    | Decorates registry with cache + lockfile              |
-| `parsePURL`    | `src/core/purl.ts`      | Canonical PURL parser — single source of truth        |
-| `Client`       | `src/core/client.ts`    | Central HTTP: retry, timeout, rate limiting           |
-| `DEFAULT_TTL`  | `src/cache/lockfile.ts` | Project-wide cache freshness policy                   |
+| Symbol         | Location                  | Role                                                        |
+| -------------- | ------------------------- | ----------------------------------------------------------- |
+| `Registry`     | `src/core/registry.ts`    | Abstract contract shared by adapters and decorators         |
+| `create`       | `src/core/registry.ts`    | Imports and instantiates the adapter for an ecosystem key   |
+| `builtins`     | `src/registries/index.ts` | Manifest of shipped adapters: key, default URL, lazy loader |
+| `createCached` | `src/cache/index.ts`      | Decorates registry with cache + lockfile                    |
+| `parsePURL`    | `src/core/purl.ts`        | Canonical PURL parser — single source of truth              |
+| `Client`       | `src/core/client.ts`      | Central HTTP: retry, timeout, rate limiting                 |
+| `DEFAULT_TTL`  | `src/cache/lockfile.ts`   | Project-wide cache freshness policy                         |
 
 ## Banned Patterns
 
 - Parsing PURLs outside `src/core/purl.ts` — always use `createFromPURL`/`parsePURL`.
 - Bypassing `Client` for direct fetch in registries.
+- Module-scope `register()` calls, or any other work at import, anywhere under `src/`.
 - Duplicating retry/backoff constants outside `client.ts`.
 - Hardcoding cache TTL outside `lockfile.ts`.
 - Adding CommonJS output or `require` paths.
@@ -151,4 +153,4 @@ docs/                # Docus site: guide, registry pages, live lookup explorer o
 - Bulk fetch helpers skip failed packages instead of failing all — this is intentional.
 - Cache is optional decorator, never mandatory in core flows.
 - e2e smoke tests are network-sensitive — failures may be transient.
-- `sideEffects` in `package.json` must cover `dist/_chunks/*.mjs`: obuild emits the adapter `register()` calls into a chunk, and a bundler that trusts `sideEffects` drops it otherwise (guarded by `test/unit/side-effects.test.ts`).
+- `build.config.ts` reads `src/registries/` and makes every adapter its own entry (`dist/registries/<name>.mjs`, exported as `./registries/*`), so the manifest's `import()` resolves to a stable file and `dist/index.mjs` never pulls an adapter in statically.

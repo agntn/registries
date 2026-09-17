@@ -8,24 +8,25 @@
 
 ```text
 src/registries/
-|- index.ts       # side-effect registration hub
+|- index.ts       # builtins manifest: key, default URL, lazy import() per adapter
 |- npm.ts         # npm adapter
 |- pypi.ts        # PyPI adapter
 |- cargo.ts       # crates.io adapter
 |- rubygems.ts    # RubyGems adapter
-`- packagist.ts   # Packagist adapter
+|- packagist.ts   # Packagist adapter
+`- alpm.ts        # Arch Linux adapter (official repos + AUR)
 ```
 
 ## WHERE TO LOOK
 
-| Task                    | Location                      | Notes                                         |
-| ----------------------- | ----------------------------- | --------------------------------------------- |
-| Register all ecosystems | `src/registries/index.ts`     | Side-effect import hub                        |
-| npm adapter behavior    | `src/registries/npm.ts`       | Largest implementation; good pattern baseline |
-| Python package behavior | `src/registries/pypi.ts`      | Name normalization and metadata mapping       |
-| Cargo crate behavior    | `src/registries/cargo.ts`     | crates.io-specific dependency mapping         |
-| RubyGems behavior       | `src/registries/rubygems.ts`  | Maintainer/license mapping nuances            |
-| Packagist behavior      | `src/registries/packagist.ts` | Composer ecosystem parsing                    |
+| Task                    | Location                      | Notes                                          |
+| ----------------------- | ----------------------------- | ---------------------------------------------- |
+| List all ecosystems     | `src/registries/index.ts`     | Manifest read by `create()`; no adapter import |
+| npm adapter behavior    | `src/registries/npm.ts`       | Largest implementation; good pattern baseline  |
+| Python package behavior | `src/registries/pypi.ts`      | Name normalization and metadata mapping        |
+| Cargo crate behavior    | `src/registries/cargo.ts`     | crates.io-specific dependency mapping          |
+| RubyGems behavior       | `src/registries/rubygems.ts`  | Maintainer/license mapping nuances             |
+| Packagist behavior      | `src/registries/packagist.ts` | Composer ecosystem parsing                     |
 
 ## CONVENTIONS
 
@@ -38,7 +39,7 @@ src/registries/
 
 - Do not call `fetch` directly; use `Client`.
 - Do not return raw upstream payloads through public methods.
-- Do not skip registration wiring; new adapter must be imported in `index.ts`.
+- Do not call `register()` at module scope; a new adapter gets a manifest entry in `index.ts` and the build picks its file up from the directory.
 
 ## NOTES
 

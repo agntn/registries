@@ -23,7 +23,7 @@ export default defineEventHandler(async (event) => {
   const query = getQuery(event);
   const purl = readPurl(query);
   const limit = readInt(query, "limit", 1, LIMITS.versions) ?? 30;
-  const lookup = resolveLookup(purl);
+  const lookup = await resolveLookup(purl);
   const params = { ecosystem: lookup.ecosystem, name: lookup.name, limit };
   try {
     return await cachedAnswer<VersionsAnswer>(event, "versions", params, DEFAULT_TTL.versions, async () => {

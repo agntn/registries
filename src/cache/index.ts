@@ -43,9 +43,12 @@ export interface CreateCachedOptions {
  *
  * @param ecosystem - Registry ecosystem key.
  * @param options - Optional registry, client, and storage overrides.
- * @returns {Registry} A cached registry instance.
+ * @returns {Promise<Registry>} A cached registry instance.
  */
-export function createCached(ecosystem: string, options?: CreateCachedOptions): Registry {
-  const inner = create(ecosystem, options?.baseURL, options?.client);
+export async function createCached(
+  ecosystem: string,
+  options?: CreateCachedOptions,
+): Promise<Registry> {
+  const inner = await create(ecosystem, options?.baseURL, options?.client);
   return new CachedRegistry(inner, options?.storage);
 }

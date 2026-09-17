@@ -7,7 +7,6 @@ import {
   bulkFetchPackages,
 } from "../../src/helpers.ts";
 import { InvalidPURLError } from "../../src/core/errors.ts";
-import "../../src/registries/index.ts";
 
 function version(
   num: string,
@@ -212,7 +211,7 @@ describe("bulkFetchPackages", () => {
 
     const fetchPackage = vi.fn().mockResolvedValue(pkg());
     const registry = makeMockRegistry(fetchPackage);
-    vi.spyOn(await import("../../src/core/purl.ts"), "createFromPURL").mockReturnValue([
+    vi.spyOn(await import("../../src/core/purl.ts"), "createFromPURL").mockResolvedValue([
       registry,
       "test",
       "",
@@ -238,7 +237,7 @@ describe("bulkFetchPackages", () => {
     });
 
     vi.spyOn(await import("../../src/core/purl.ts"), "createFromPURL").mockImplementation(
-      (purl: string) => {
+      async (purl: string) => {
         const name = purl.replace("pkg:npm/", "");
         return [makeMockRegistry(fetchPackage), name, ""];
       },
@@ -252,22 +251,5 @@ describe("bulkFetchPackages", () => {
 
     expect(results.size).toBeLessThanOrEqual(1);
     expect(fetchCount).toBeLessThanOrEqual(2);
-  });
-});
-
-describe("root entrypoint registry initialization", () => {
-  it("registers built-in ecosystems via side effects", async () => {
-    vi.resetModules();
-    const ecosystems = ["npm", "cargo", "pypi", "gem", "composer", "alpm"] as const;
-
-    const { has } = await import("../../src/core/registry.ts");
-    for (const ecosystem of ecosystems) {
-      expect(has(ecosystem)).toBe(false);
-    }
-
-    await import("../../src/index.ts");
-    for (const ecosystem of ecosystems) {
-      expect(has(ecosystem)).toBe(true);
-    }
   });
 });

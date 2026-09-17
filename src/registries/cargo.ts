@@ -1,10 +1,10 @@
 import type { Client } from "../core/client.ts";
 import type { Dependency, Maintainer, Package, URLBuilder, Version } from "../core/types.ts";
-import { Registry, register } from "../core/registry.ts";
+import { Registry } from "../core/registry.ts";
 import { normalizeLicense } from "../core/license.ts";
 import { normalizeRepositoryURL } from "../core/repository.ts";
 import { buildPURL } from "../core/purl.ts";
-import { rethrowFetchError } from "./error.ts";
+import { rethrowFetchError } from "../core/errors.ts";
 
 /** Crates.io API response for a single crate. */
 interface CratesPackageResponse {
@@ -263,5 +263,3 @@ export class CargoRegistry extends Registry {
     };
   }
 }
-
-register("cargo", "https://crates.io", CargoRegistry);

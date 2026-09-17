@@ -1,10 +1,10 @@
 import type { Client } from "../core/client.ts";
 import type { Dependency, Maintainer, Package, URLBuilder, Version } from "../core/types.ts";
-import { Registry, register } from "../core/registry.ts";
+import { Registry } from "../core/registry.ts";
 import { normalizeLicense } from "../core/license.ts";
 import { normalizeRepositoryURL } from "../core/repository.ts";
 import { buildPURL } from "../core/purl.ts";
-import { rethrowFetchError } from "./error.ts";
+import { rethrowFetchError } from "../core/errors.ts";
 
 const PYPI_FILENAME_SEPARATORS = ["_", "-", "."] as const;
 
@@ -463,5 +463,3 @@ export class PyPIRegistry extends Registry {
     };
   }
 }
-
-register("pypi", "https://pypi.org", PyPIRegistry);

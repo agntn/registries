@@ -18,7 +18,7 @@ export default defineCommand({
   },
   async run({ args }) {
     await withErrorHandling(async () => {
-      const [reg, name] = resolvePURL(args.purl, !args["no-cache"]);
+      const [reg, name] = await resolvePURL(args.purl, !args["no-cache"]);
       const maintainers = await reg.fetchMaintainers(name);
 
       if (args.json) {

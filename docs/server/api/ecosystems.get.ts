@@ -1,12 +1,9 @@
-import { create, ecosystems } from "@agntn/registries";
+import { builtins } from "@agntn/registries/registries";
 
-/** The ecosystems the library registered at import, with the registry URL each one builds for an example. */
+/** The ecosystems the library ships, read from the manifest so no adapter loads for a listing. */
 export default defineEventHandler((event) => {
   markPublic(event, 60 * 60);
   return {
-    ecosystems: ecosystems().map((key) => {
-      const registry = create(key);
-      return { key, ecosystem: registry.ecosystem() };
-    }),
+    ecosystems: builtins.map(({ ecosystem, defaultURL }) => ({ key: ecosystem, defaultURL })),
   };
 });

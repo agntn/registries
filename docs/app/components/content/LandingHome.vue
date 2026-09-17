@@ -103,7 +103,7 @@ async function copyInstall() {
       link="Package, versions, dependencies, maintainers"
       :checks="[
         'fetchPackage, fetchVersions, fetchDependencies, fetchMaintainers on every registry',
-        'Adapters register themselves; create(\'npm\') resolves the class, no switch statement',
+        'create(\'npm\') imports one adapter on first use, nothing runs at import, no switch statement',
         'Bring your own Client for retries, timeouts, rate limiting and a User-Agent',
       ]"
       reverse

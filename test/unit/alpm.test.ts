@@ -1,7 +1,6 @@
 import { Client } from "../../src/core/client.ts";
 import { NotFoundError, HTTPError } from "../../src/core/errors.ts";
 import { create } from "../../src/core/registry.ts";
-import "../../src/registries/index.ts";
 
 function archSearchResponse(overrides: Readonly<Record<string, unknown>> = {}) {
   return {
@@ -86,7 +85,7 @@ describe("alpm registry", () => {
       const client = new Client();
       vi.spyOn(client, "getJSON").mockResolvedValueOnce(archSearchResponse());
 
-      const registry = create("alpm", undefined, client);
+      const registry = await create("alpm", undefined, client);
       const pkg = await registry.fetchPackage("arch/pacman");
 
       expect(pkg.name).toBe("pacman");
@@ -106,7 +105,7 @@ describe("alpm registry", () => {
         archSearchResponse({ epoch: 2, pkgver: "1.0.0", pkgrel: "1" }),
       );
 
-      const registry = create("alpm", undefined, client);
+      const registry = await create("alpm", undefined, client);
       const pkg = await registry.fetchPackage("arch/some-pkg");
 
       expect(pkg.latestVersion).toBe("2:1.0.0-1");
@@ -122,7 +121,7 @@ describe("alpm registry", () => {
       };
       vi.spyOn(client, "getJSON").mockResolvedValueOnce(response);
 
-      const registry = create("alpm", undefined, client);
+      const registry = await create("alpm", undefined, client);
       const pkg = await registry.fetchPackage("arch/pacman");
 
       expect(pkg.metadata.arch).toBe("x86_64");
@@ -132,7 +131,7 @@ describe("alpm registry", () => {
       const client = new Client();
       vi.spyOn(client, "getJSON").mockResolvedValueOnce({ results: [] });
 
-      const registry = create("alpm", undefined, client);
+      const registry = await create("alpm", undefined, client);
 
       await expect(registry.fetchPackage("arch/nonexistent-pkg-xyz")).rejects.toThrow(
         NotFoundError,
@@ -145,7 +144,7 @@ describe("alpm registry", () => {
         new HTTPError(404, "https://mock/not-found", "Not Found"),
       );
 
-      const registry = create("alpm", undefined, client);
+      const registry = await create("alpm", undefined, client);
 
       await expect(registry.fetchPackage("arch/nonexistent-pkg-xyz")).rejects.toThrow(
         NotFoundError,
@@ -156,7 +155,7 @@ describe("alpm registry", () => {
       const client = new Client();
       vi.spyOn(client, "getJSON").mockResolvedValueOnce(archSearchResponse());
 
-      const registry = create("alpm", undefined, client);
+      const registry = await create("alpm", undefined, client);
       const versions = await registry.fetchVersions("arch/pacman");
 
       expect(versions).toHaveLength(1);
@@ -172,7 +171,7 @@ describe("alpm registry", () => {
         archSearchResponse({ flag_date: "2025-12-01T00:00:00Z" }),
       );
 
-      const registry = create("alpm", undefined, client);
+      const registry = await create("alpm", undefined, client);
       const versions = await registry.fetchVersions("arch/old-pkg");
 
       expect(versions[0].status).toBe("deprecated");
@@ -182,7 +181,7 @@ describe("alpm registry", () => {
       const client = new Client();
       vi.spyOn(client, "getJSON").mockResolvedValueOnce(archSearchResponse());
 
-      const registry = create("alpm", undefined, client);
+      const registry = await create("alpm", undefined, client);
       const deps = await registry.fetchDependencies("arch/pacman", "6.1.0-3");
 
       // Runtime deps
@@ -218,7 +217,7 @@ describe("alpm registry", () => {
       const client = new Client();
       vi.spyOn(client, "getJSON").mockResolvedValueOnce(archSearchResponse());
 
-      const registry = create("alpm", undefined, client);
+      const registry = await create("alpm", undefined, client);
 
       await expect(registry.fetchDependencies("arch/pacman", "6.1.0-2")).rejects.toThrow(
         NotFoundError,
@@ -236,7 +235,7 @@ describe("alpm registry", () => {
         }),
       );
 
-      const registry = create("alpm", undefined, client);
+      const registry = await create("alpm", undefined, client);
       const deps = await registry.fetchDependencies("arch/pacman", "6.1.0-3");
 
       expect(deps).toHaveLength(1);
@@ -250,7 +249,7 @@ describe("alpm registry", () => {
       const client = new Client();
       vi.spyOn(client, "getJSON").mockResolvedValueOnce(archSearchResponse());
 
-      const registry = create("alpm", undefined, client);
+      const registry = await create("alpm", undefined, client);
       const maintainers = await registry.fetchMaintainers("arch/pacman");
 
       expect(maintainers).toHaveLength(1);
@@ -264,7 +263,7 @@ describe("alpm registry", () => {
       const client = new Client();
       vi.spyOn(client, "getJSON").mockResolvedValueOnce(aurInfoResponse());
 
-      const registry = create("alpm", undefined, client);
+      const registry = await create("alpm", undefined, client);
       const pkg = await registry.fetchPackage("aur/yay");
 
       expect(pkg.name).toBe("yay");
@@ -287,7 +286,7 @@ describe("alpm registry", () => {
         version: 5,
       });
 
-      const registry = create("alpm", undefined, client);
+      const registry = await create("alpm", undefined, client);
 
       await expect(registry.fetchPackage("aur/nonexistent-pkg-xyz")).rejects.toThrow(NotFoundError);
     });
@@ -296,7 +295,7 @@ describe("alpm registry", () => {
       const client = new Client();
       vi.spyOn(client, "getJSON").mockResolvedValueOnce(aurInfoResponse());
 
-      const registry = create("alpm", undefined, client);
+      const registry = await create("alpm", undefined, client);
       const versions = await registry.fetchVersions("aur/yay");
 
       expect(versions).toHaveLength(1);
@@ -310,7 +309,7 @@ describe("alpm registry", () => {
       const client = new Client();
       vi.spyOn(client, "getJSON").mockResolvedValueOnce(aurInfoResponse({ OutOfDate: 1700000000 }));
 
-      const registry = create("alpm", undefined, client);
+      const registry = await create("alpm", undefined, client);
       const versions = await registry.fetchVersions("aur/old-pkg");
 
       expect(versions[0].status).toBe("deprecated");
@@ -320,7 +319,7 @@ describe("alpm registry", () => {
       const client = new Client();
       vi.spyOn(client, "getJSON").mockResolvedValueOnce(aurInfoResponse());
 
-      const registry = create("alpm", undefined, client);
+      const registry = await create("alpm", undefined, client);
       const deps = await registry.fetchDependencies("aur/yay", "12.4.2-1");
 
       const pacman = deps.find((d) => d.name === "pacman");
@@ -343,7 +342,7 @@ describe("alpm registry", () => {
       const client = new Client();
       vi.spyOn(client, "getJSON").mockResolvedValueOnce(aurInfoResponse());
 
-      const registry = create("alpm", undefined, client);
+      const registry = await create("alpm", undefined, client);
 
       await expect(registry.fetchDependencies("aur/yay", "12.4.2-0")).rejects.toThrow(
         NotFoundError,
@@ -361,7 +360,7 @@ describe("alpm registry", () => {
         }),
       );
 
-      const registry = create("alpm", undefined, client);
+      const registry = await create("alpm", undefined, client);
       const deps = await registry.fetchDependencies("aur/yay", "12.4.2-1");
 
       expect(deps).toHaveLength(1);
@@ -375,7 +374,7 @@ describe("alpm registry", () => {
       const client = new Client();
       vi.spyOn(client, "getJSON").mockResolvedValueOnce(aurInfoResponse({ Maintainer: null }));
 
-      const registry = create("alpm", undefined, client);
+      const registry = await create("alpm", undefined, client);
       const maintainers = await registry.fetchMaintainers("aur/orphaned-pkg");
 
       expect(maintainers).toHaveLength(0);
@@ -385,7 +384,7 @@ describe("alpm registry", () => {
       const client = new Client();
       vi.spyOn(client, "getJSON").mockResolvedValueOnce(aurInfoResponse());
 
-      const registry = create("alpm", undefined, client);
+      const registry = await create("alpm", undefined, client);
       const maintainers = await registry.fetchMaintainers("aur/yay");
 
       expect(maintainers).toHaveLength(1);
@@ -397,7 +396,7 @@ describe("alpm registry", () => {
   describe("namespace routing", () => {
     it("should reject unsupported namespaces", async () => {
       const client = new Client();
-      const registry = create("alpm", undefined, client);
+      const registry = await create("alpm", undefined, client);
 
       await expect(registry.fetchPackage("manjaro/pacman")).rejects.toThrow(NotFoundError);
     });
@@ -406,7 +405,7 @@ describe("alpm registry", () => {
       const client = new Client();
       const getJSON = vi.spyOn(client, "getJSON").mockResolvedValueOnce(archSearchResponse());
 
-      const registry = create("alpm", undefined, client);
+      const registry = await create("alpm", undefined, client);
       const pkg = await registry.fetchPackage("  Arch/Pacman  ");
 
       expect(pkg.name).toBe("pacman");
@@ -417,7 +416,7 @@ describe("alpm registry", () => {
       const client = new Client();
       const getJSON = vi.spyOn(client, "getJSON").mockResolvedValueOnce(archSearchResponse());
 
-      const registry = create("alpm", undefined, client);
+      const registry = await create("alpm", undefined, client);
       const pkg = await registry.fetchPackage("pacman");
 
       expect(pkg.namespace).toBe("arch");
@@ -431,7 +430,7 @@ describe("alpm registry", () => {
       const client = new Client();
       const getJSON = vi.spyOn(client, "getJSON").mockResolvedValueOnce(aurInfoResponse());
 
-      const registry = create("alpm", undefined, client);
+      const registry = await create("alpm", undefined, client);
       await registry.fetchPackage("aur/yay");
 
       expect(getJSON).toHaveBeenCalledWith(
@@ -442,8 +441,8 @@ describe("alpm registry", () => {
   });
 
   describe("URL builder", () => {
-    it("should generate official package URLs", () => {
-      const registry = create("alpm");
+    it("should generate official package URLs", async () => {
+      const registry = await create("alpm");
       const urls = registry.urls();
 
       expect(urls.registry("arch/pacman")).toContain("archlinux.org/packages");
@@ -454,8 +453,8 @@ describe("alpm registry", () => {
       expect(urls.purl("arch/pacman", "6.1.0-3")).toBe("pkg:alpm/arch/pacman@6.1.0-3");
     });
 
-    it("should generate AUR package URLs", () => {
-      const registry = create("alpm");
+    it("should generate AUR package URLs", async () => {
+      const registry = await create("alpm");
       const urls = registry.urls();
 
       expect(urls.registry("aur/yay")).toContain("aur.archlinux.org/packages/yay");
@@ -463,8 +462,8 @@ describe("alpm registry", () => {
       expect(urls.purl("aur/yay", "12.4.2-1")).toBe("pkg:alpm/aur/yay@12.4.2-1");
     });
 
-    it("should point download URL to archive directory without hardcoded arch", () => {
-      const registry = create("alpm");
+    it("should point download URL to archive directory without hardcoded arch", async () => {
+      const registry = await create("alpm");
       const urls = registry.urls();
 
       const url = urls.download("arch/some-pkg", "2:1.0.0-1");

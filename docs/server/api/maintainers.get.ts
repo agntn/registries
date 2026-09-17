@@ -11,7 +11,7 @@ export interface MaintainersAnswer {
 /** Maintainers through `fetchMaintainers`, cached for a day like the library does. */
 export default defineEventHandler(async (event) => {
   const purl = readPurl(getQuery(event));
-  const lookup = resolveLookup(purl);
+  const lookup = await resolveLookup(purl);
   const params = { ecosystem: lookup.ecosystem, name: lookup.name };
   try {
     return await cachedAnswer<MaintainersAnswer>(event, "maintainers", params, DEFAULT_TTL.maintainers, async () => {
