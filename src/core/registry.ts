@@ -97,11 +97,11 @@ export async function create(
     throw new UnknownEcosystemError(ecosystem);
   }
   if (!entry.RegistryClass) {
-    entry.pending ??= entry.load();
+    const pending = (entry.pending ??= entry.load());
     try {
-      entry.RegistryClass = await entry.pending;
+      entry.RegistryClass = await pending;
     } catch (error) {
-      entry.pending = undefined;
+      if (entry.pending === pending) entry.pending = undefined;
       throw error;
     }
   }
