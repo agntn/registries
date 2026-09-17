@@ -1,9 +1,17 @@
 import { fileURLToPath } from "node:url";
 
+/** Bundled from the checkout's sources: a deploy needs neither dist/ nor the root node_modules. */
+const librarySource = fileURLToPath(new URL("../src/", import.meta.url));
+
 export default defineNuxtConfig({
   extends: ["docus"],
   /** The repo root is its own pnpm workspace; Nuxt must not treat it as this site's. */
   workspaceDir: fileURLToPath(new URL("./", import.meta.url)),
+  /** The subpath alias comes first: a plain prefix match on the package name would swallow it. */
+  alias: {
+    "@agntn/registries/registries": `${librarySource}registries/index.ts`,
+    "@agntn/registries": `${librarySource}index.ts`,
+  },
   devtools: { enabled: true },
   telemetry: false,
   site: {

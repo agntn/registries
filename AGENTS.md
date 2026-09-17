@@ -14,7 +14,7 @@ pnpm fmt                  # oxlint --fix + oxfmt
 pnpm test                 # vitest watch mode
 pnpm test:run             # vitest single run (CI-style)
 pnpm release              # test + build + changelogen --release --push
-pnpm docs                 # Docus site + lookup explorer on :3000 (after pnpm build)
+pnpm docs                 # Docus site + lookup explorer on :3000
 pnpm docs:build           # Cloudflare Workers build of the docs
 ```
 

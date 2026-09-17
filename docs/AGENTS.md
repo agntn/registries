@@ -6,7 +6,7 @@ Docus site for `@agntn/registries`. Markdown lives in `content/`. The lookup exp
 
 ```
 docs/
-├── nuxt.config.ts                 # extends: ['docus'], cloudflare_module preset (Workers)
+├── nuxt.config.ts                 # extends: ['docus'], cloudflare_module preset (Workers), @agntn/registries aliased to ../src
 ├── app/app.config.ts              # title, github, theme
 ├── app/app.css                    # theme tokens (light + .dark), shared `registries-*` classes
 ├── app/components/                # Docus overrides: AppHeaderLogo, AppHeaderCTA (nav), AppFooterLeft, DocsAsideLeftBody
@@ -26,7 +26,7 @@ docs/
 ## Commands
 
 ```bash
-pnpm install          # from docs/, after pnpm build in the repo root
+pnpm install          # from docs/
 pnpm dev              # http://localhost:3000
 pnpm build            # Cloudflare Workers output in .output/, content routes prerendered
 pnpm deploy           # build, then wrangler deploy to registries.agntn.dev
@@ -35,7 +35,7 @@ pnpm generate         # static output only; the /api routes need the worker
 
 Deployment: Nitro preset `cloudflare_module`. Nuxt Content needs a D1 binding named `DB` and the response cache a KV binding named `CACHE`; `wrangler.jsonc` carries both and the `NUXT_SITE_URL` var, Nitro merges it into the generated `.output/server/wrangler.json`. Create them once with `wrangler d1 create agntn-registries` and `wrangler kv namespace create CACHE` and put the ids in `wrangler.jsonc`; the ids there are placeholders until then.
 
-The site imports `@agntn/registries` from `file:..`. Build the parent package first.
+`@agntn/registries` and `@agntn/registries/registries` are aliases in `nuxt.config.ts` for `../src/index.ts` and `../src/registries/index.ts`. Nitro bundles the checkout's sources into the worker, so `dist/` and the root `node_modules` are never touched; Workers Builds installs `docs/` and nothing else. The subgraph under `src/index.ts` imports `ofetch` and `unstorage` from npm, so both are dependencies of `docs/package.json`: a bare import in `../src` resolves upwards from the importer and reaches `docs/node_modules` only as Nitro's fallback. A new npm import that `src/index.ts` can reach needs an entry there or the deploy breaks. The CLI, MCP and tool entries stay out of the alias.
 
 Resolution traps, both caused by the repo root being a pnpm workspace:
 

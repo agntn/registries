@@ -221,7 +221,7 @@ pnpm lint          # builds first, then oxlint and oxfmt --check
 pnpm typecheck     # library and tests, then a build and both extensions
 pnpm test:run
 pnpm build         # obuild
-pnpm docs          # the Docus site on :3000, after pnpm build
+pnpm docs          # the Docus site on :3000
 ```
 
 ## 💛 Thanks
