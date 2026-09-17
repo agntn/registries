@@ -16,7 +16,7 @@ export async function fetchPackageFromPURL(
   signal?: AbortSignal,
   client?: Client,
 ): Promise<Package> {
-  const [reg, name] = createFromPURL(purl, client);
+  const [reg, name] = await createFromPURL(purl, client);
   return reg.fetchPackage(name, signal);
 }
 
@@ -33,7 +33,7 @@ export async function fetchVersionsFromPURL(
   signal?: AbortSignal,
   client?: Client,
 ): Promise<Version[]> {
-  const [reg, name] = createFromPURL(purl, client);
+  const [reg, name] = await createFromPURL(purl, client);
   return reg.fetchVersions(name, signal);
 }
 
@@ -50,7 +50,7 @@ export async function fetchDependenciesFromPURL(
   signal?: AbortSignal,
   client?: Client,
 ): Promise<Dependency[]> {
-  const [reg, name, version] = createFromPURL(purl, client);
+  const [reg, name, version] = await createFromPURL(purl, client);
   if (!version) {
     throw new InvalidPURLError(purl, "must include a version for dependency lookup");
   }
@@ -70,7 +70,7 @@ export async function fetchMaintainersFromPURL(
   signal?: AbortSignal,
   client?: Client,
 ): Promise<Maintainer[]> {
-  const [reg, name] = createFromPURL(purl, client);
+  const [reg, name] = await createFromPURL(purl, client);
   return reg.fetchMaintainers(name, signal);
 }
 

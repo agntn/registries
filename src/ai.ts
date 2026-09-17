@@ -7,7 +7,6 @@ import {
   fetchPackageFromPURL,
   fetchVersionsFromPURL,
 } from "./helpers.ts";
-import "./registries/index.ts";
 
 export const packageTool = tool({
   description:

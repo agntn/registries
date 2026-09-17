@@ -142,12 +142,15 @@ export function fullName(parsed: ParsedPURL): string {
  *
  * @param purlStr - Package URL to resolve.
  * @param client - Optional HTTP client.
- * @returns {[Registry, string, string]} The registry, package name, and version.
+ * @returns {Promise<[Registry, string, string]>} The registry, package name, and version.
  */
-export function createFromPURL(purlStr: string, client?: Client): [Registry, string, string] {
+export async function createFromPURL(
+  purlStr: string,
+  client?: Client,
+): Promise<[Registry, string, string]> {
   const parsed = parsePURL(purlStr);
   const baseURL = parsed.qualifiers["repository_url"] ?? "";
-  const reg = create(parsed.type, baseURL || undefined, client);
+  const reg = await create(parsed.type, baseURL || undefined, client);
   return [reg, fullName(parsed), parsed.version];
 }
 

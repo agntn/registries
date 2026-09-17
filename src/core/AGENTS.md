@@ -9,7 +9,7 @@
 ```text
 src/core/
 |- client.ts      # HTTP, retries, timeout, rate limiter hook
-|- registry.ts    # factory registry (`register`/`create`)
+|- registry.ts    # lazy factory registry (`builtins` manifest, `register`/`create`)
 |- purl.ts        # parse/build PURL pipeline
 |- errors.ts      # typed error hierarchy
 |- types.ts       # shared cross-module contracts
@@ -22,7 +22,7 @@ src/core/
 
 | Task                        | Location                 | Notes                                                   |
 | --------------------------- | ------------------------ | ------------------------------------------------------- |
-| Registry creation flow      | `src/core/registry.ts`   | `register` + `create` map-based factory                 |
+| Registry creation flow      | `src/core/registry.ts`   | Manifest-seeded table, async `create` imports on demand |
 | PURL parse/build behavior   | `src/core/purl.ts`       | Single source of truth for validation and normalization |
 | HTTP retries/timeouts       | `src/core/client.ts`     | Shared retry status list and backoff policy             |
 | Type-level contract updates | `src/core/types.ts`      | Changes cascade to all adapters and CLI                 |

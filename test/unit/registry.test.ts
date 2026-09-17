@@ -61,33 +61,32 @@ describe("registry", () => {
     expect(has("test")).toBe(true);
   });
 
-  it("should instantiate the registered class", () => {
+  it("should instantiate the registered class", async () => {
     register("test", "https://create.example.com", TestRegistry);
 
-    const registry = create("test");
+    const registry = await create("test");
     expect(registry).toBeInstanceOf(TestRegistry);
     expect(registry.ecosystem()).toBe("test");
   });
 
-  it("should use the default base URL", () => {
+  it("should use the default base URL", async () => {
     register("test", "https://default.example.com", TestRegistry);
 
-    expect(create("test").urls().registry("package")).toBe("https://default.example.com");
+    expect((await create("test")).urls().registry("package")).toBe("https://default.example.com");
   });
 
-  it("should use a custom base URL", () => {
+  it("should use a custom base URL", async () => {
     register("test", "https://default.example.com", TestRegistry);
 
-    expect(create("test", "https://custom.example.com").urls().registry("package")).toBe(
-      "https://custom.example.com",
-    );
+    const registry = await create("test", "https://custom.example.com");
+    expect(registry.urls().registry("package")).toBe("https://custom.example.com");
   });
 
-  it("should pass a custom client to the class", () => {
+  it("should pass a custom client to the class", async () => {
     register("test", "https://client.example.com", TestRegistry);
     const client = new Client();
 
-    expect(create("test", undefined, client)).toMatchObject({ client });
+    expect(await create("test", undefined, client)).toMatchObject({ client });
   });
 
   it("should list registered ecosystems", () => {
@@ -103,15 +102,15 @@ describe("registry", () => {
     expect(has("TEST")).toBe(false);
   });
 
-  it("should throw for an unregistered ecosystem", () => {
-    expect(() => create("nonexistent-ecosystem")).toThrow(UnknownEcosystemError);
+  it("should reject an unregistered ecosystem", async () => {
+    await expect(create("nonexistent-ecosystem")).rejects.toThrow(UnknownEcosystemError);
   });
 
-  it("should include the ecosystem in an unknown-ecosystem error", () => {
+  it("should include the ecosystem in an unknown-ecosystem error", async () => {
     expect.assertions(2);
 
     try {
-      create("unknown-eco");
+      await create("unknown-eco");
     } catch (error) {
       expect(error).toBeInstanceOf(UnknownEcosystemError);
       if (!(error instanceof UnknownEcosystemError)) throw error;

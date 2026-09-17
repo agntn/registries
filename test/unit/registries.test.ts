@@ -1,14 +1,8 @@
+import { readdirSync } from "node:fs";
 import { Client } from "../../src/core/client.ts";
 import { NotFoundError, HTTPError } from "../../src/core/errors.ts";
 import { create } from "../../src/core/registry.ts";
-import {
-  AlpmRegistry,
-  CargoRegistry,
-  NpmRegistry,
-  PackagistRegistry,
-  PyPIRegistry,
-  RubyGemsRegistry,
-} from "../../src/registries/index.ts";
+import { builtins } from "../../src/registries/index.ts";
 
 describe("Registry Modules", () => {
   beforeEach(() => {
@@ -19,21 +13,24 @@ describe("Registry Modules", () => {
     vi.restoreAllMocks();
   });
 
-  it("should align registry classes with their ecosystem keys", () => {
-    const registries = [
-      ["npm", NpmRegistry],
-      ["cargo", CargoRegistry],
-      ["pypi", PyPIRegistry],
-      ["gem", RubyGemsRegistry],
-      ["composer", PackagistRegistry],
-      ["alpm", AlpmRegistry],
-    ] as const;
-
-    for (const [ecosystem, RegistryClass] of registries) {
-      const registry = create(ecosystem);
+  /** The manifest carries the key, so an adapter whose ecosystem() drifted from its entry would answer create() under the wrong PURL type. */
+  it("should load the class each manifest entry names", async () => {
+    for (const entry of builtins) {
+      const RegistryClass = await entry.load();
+      const registry = await create(entry.ecosystem);
       expect(registry).toBeInstanceOf(RegistryClass);
-      expect(registry.ecosystem()).toBe(ecosystem);
+      expect(registry.ecosystem()).toBe(entry.ecosystem);
+      expect(new RegistryClass(entry.defaultURL, new Client()).ecosystem()).toBe(entry.ecosystem);
     }
+  });
+
+  /** An adapter file that never made it into the manifest is invisible to create(). */
+  it("should list every adapter file in the manifest", () => {
+    const shared = new Set(["index.ts", "error.ts"]);
+    const adapters = readdirSync(new URL("../../src/registries/", import.meta.url)).filter(
+      (file) => file.endsWith(".ts") && !shared.has(file),
+    );
+    expect(adapters).toHaveLength(builtins.length);
   });
 
   describe("npm registry", () => {
@@ -72,7 +69,7 @@ describe("Registry Modules", () => {
 
       vi.spyOn(client, "getJSON").mockResolvedValueOnce(mockResponse);
 
-      const registry = create("npm", undefined, client);
+      const registry = await create("npm", undefined, client);
       const pkg = await registry.fetchPackage("lodash");
 
       expect(pkg.name).toBe("lodash");
@@ -91,7 +88,7 @@ describe("Registry Modules", () => {
         new HTTPError(404, "https://mock/not-found", "Not Found"),
       );
 
-      const registry = create("npm", undefined, client);
+      const registry = await create("npm", undefined, client);
 
       await expect(registry.fetchPackage("nonexistent-package-xyz")).rejects.toThrow(NotFoundError);
     });
@@ -132,7 +129,7 @@ describe("Registry Modules", () => {
 
       vi.spyOn(client, "getJSON").mockResolvedValueOnce(mockResponse);
 
-      const registry = create("npm", undefined, client);
+      const registry = await create("npm", undefined, client);
       const versions = await registry.fetchVersions("lodash");
 
       expect(versions).toHaveLength(2);
@@ -173,7 +170,7 @@ describe("Registry Modules", () => {
 
       vi.spyOn(client, "getJSON").mockResolvedValueOnce(mockResponse);
 
-      const registry = create("npm", undefined, client);
+      const registry = await create("npm", undefined, client);
       const maintainers = await registry.fetchMaintainers("lodash");
 
       // Top-level maintainers (jdalton, mathias) + contributor from latest (Blaine)
@@ -209,7 +206,7 @@ describe("Registry Modules", () => {
 
       const spy = vi.spyOn(client, "getJSON").mockResolvedValueOnce(mockVersionResponse);
 
-      const registry = create("npm", undefined, client);
+      const registry = await create("npm", undefined, client);
       const deps = await registry.fetchDependencies("lodash", "4.17.21");
 
       // Should call per-version endpoint, not full package doc
@@ -242,8 +239,8 @@ describe("Registry Modules", () => {
       });
     });
 
-    it("should produce valid PURL for scoped packages", () => {
-      const registry = create("npm");
+    it("should produce valid PURL for scoped packages", async () => {
+      const registry = await create("npm");
       const urls = registry.urls();
       expect(urls.purl("@babel/core", "7.0.0")).toBe("pkg:npm/%40babel/core@7.0.0");
       expect(urls.purl("@babel/core")).toBe("pkg:npm/%40babel/core");
@@ -302,7 +299,7 @@ describe("Registry Modules", () => {
 
       vi.spyOn(client, "getJSON").mockResolvedValueOnce(mockResponse);
 
-      const registry = create("cargo", undefined, client);
+      const registry = await create("cargo", undefined, client);
       const pkg = await registry.fetchPackage("serde");
 
       expect(pkg.name).toBe("serde");
@@ -391,7 +388,7 @@ describe("Registry Modules", () => {
 
       vi.spyOn(client, "getJSON").mockResolvedValueOnce(mockResponse);
 
-      const registry = create("cargo", undefined, client);
+      const registry = await create("cargo", undefined, client);
       const pkg = await registry.fetchPackage("example");
 
       expect(pkg.latestVersion).toBe("1.0.0");
@@ -405,7 +402,7 @@ describe("Registry Modules", () => {
         new HTTPError(404, "https://mock/not-found", "Not Found"),
       );
 
-      const registry = create("cargo", undefined, client);
+      const registry = await create("cargo", undefined, client);
 
       await expect(registry.fetchPackage("nonexistent-crate-xyz")).rejects.toThrow(NotFoundError);
     });
@@ -482,7 +479,7 @@ describe("Registry Modules", () => {
 
       vi.spyOn(client, "getJSON").mockResolvedValueOnce(mockResponse);
 
-      const registry = create("cargo", undefined, client);
+      const registry = await create("cargo", undefined, client);
       const versions = await registry.fetchVersions("serde");
 
       expect(versions).toHaveLength(2);
@@ -551,7 +548,7 @@ describe("Registry Modules", () => {
 
       vi.spyOn(client, "getJSON").mockResolvedValueOnce(mockResponse);
 
-      const registry = create("pypi", undefined, client);
+      const registry = await create("pypi", undefined, client);
       const pkg = await registry.fetchPackage("requests");
 
       expect(pkg.name).toBe("requests");
@@ -583,7 +580,7 @@ describe("Registry Modules", () => {
         urls: [],
       });
 
-      const pkg = await create("pypi", undefined, client).fetchPackage("uv");
+      const pkg = await (await create("pypi", undefined, client)).fetchPackage("uv");
 
       expect(pkg.licenses).toBe("MIT OR Apache-2.0");
     });
@@ -602,7 +599,9 @@ describe("Registry Modules", () => {
         },
       });
 
-      const maintainers = await create("pypi", undefined, client).fetchMaintainers("requests");
+      const maintainers = await (
+        await create("pypi", undefined, client)
+      ).fetchMaintainers("requests");
 
       expect(maintainers).toEqual([
         {
@@ -645,7 +644,7 @@ describe("Registry Modules", () => {
         },
       });
 
-      const maintainers = await create("pypi", undefined, client).fetchMaintainers("rich");
+      const maintainers = await (await create("pypi", undefined, client)).fetchMaintainers("rich");
 
       expect(maintainers).toEqual([
         {
@@ -670,7 +669,9 @@ describe("Registry Modules", () => {
         },
       });
 
-      const maintainers = await create("pypi", undefined, client).fetchMaintainers("pytest");
+      const maintainers = await (
+        await create("pypi", undefined, client)
+      ).fetchMaintainers("pytest");
 
       expect(maintainers).toHaveLength(1);
       expect(maintainers[0].name).toBe("Holger Krekel, Bruno Oliveira, Others (See AUTHORS)");
@@ -690,7 +691,7 @@ describe("Registry Modules", () => {
         },
       });
 
-      const maintainers = await create("pypi", undefined, client).fetchMaintainers("mixed");
+      const maintainers = await (await create("pypi", undefined, client)).fetchMaintainers("mixed");
 
       expect(maintainers.map((m) => [m.name, m.email, m.role])).toEqual([
         ["Alice", "", "author"],
@@ -709,7 +710,9 @@ describe("Registry Modules", () => {
         },
       });
 
-      const maintainers = await create("pypi", undefined, client).fetchMaintainers("legacy");
+      const maintainers = await (
+        await create("pypi", undefined, client)
+      ).fetchMaintainers("legacy");
 
       expect(maintainers.map((m) => [m.name, m.email])).toEqual([
         ["Doe, Joe", "joe@example.com"],
@@ -724,7 +727,7 @@ describe("Registry Modules", () => {
         new HTTPError(404, "https://mock/not-found", "Not Found"),
       );
 
-      const registry = create("pypi", undefined, client);
+      const registry = await create("pypi", undefined, client);
 
       await expect(registry.fetchPackage("nonexistent-package-xyz")).rejects.toThrow(NotFoundError);
     });
@@ -754,7 +757,7 @@ describe("Registry Modules", () => {
 
       vi.spyOn(client, "getJSON").mockResolvedValueOnce(mockResponse);
 
-      const registry = create("pypi", undefined, client);
+      const registry = await create("pypi", undefined, client);
       const pkg = await registry.fetchPackage("some-pkg");
 
       expect(pkg.homepage).toBe("https://example.com");
@@ -788,7 +791,7 @@ describe("Registry Modules", () => {
 
       vi.spyOn(client, "getJSON").mockResolvedValueOnce(mockResponse);
 
-      const registry = create("pypi", undefined, client);
+      const registry = await create("pypi", undefined, client);
       const deps = await registry.fetchDependencies("requests", "2.31.0");
 
       expect(deps).toHaveLength(4);
@@ -825,7 +828,7 @@ describe("Registry Modules", () => {
 
       vi.spyOn(client, "getJSON").mockResolvedValueOnce(mockResponse);
 
-      const registry = create("pypi", undefined, client);
+      const registry = await create("pypi", undefined, client);
       const deps = await registry.fetchDependencies("example", "1.0.0");
 
       expect(deps).toHaveLength(3);
@@ -869,7 +872,7 @@ describe("Registry Modules", () => {
 
       vi.spyOn(client, "getJSON").mockResolvedValueOnce(mockResponse);
 
-      const registry = create("pypi", undefined, client);
+      const registry = await create("pypi", undefined, client);
       const deps = await registry.fetchDependencies("example", "1.0.0");
 
       expect(deps).toHaveLength(4);
@@ -913,7 +916,7 @@ describe("Registry Modules", () => {
 
       vi.spyOn(client, "getJSON").mockResolvedValueOnce(mockResponse);
 
-      const registry = create("pypi", undefined, client);
+      const registry = await create("pypi", undefined, client);
       const deps = await registry.fetchDependencies("example", "1.0.0");
 
       expect(deps).toHaveLength(2);
@@ -949,7 +952,7 @@ describe("Registry Modules", () => {
 
       vi.spyOn(client, "getJSON").mockResolvedValueOnce(mockResponse);
 
-      const registry = create("pypi", undefined, client);
+      const registry = await create("pypi", undefined, client);
       const versions = await registry.fetchVersions("requests");
 
       expect(versions).toHaveLength(2);
@@ -986,7 +989,7 @@ describe("Registry Modules", () => {
 
       vi.spyOn(client, "getJSON").mockResolvedValueOnce(mockResponse);
 
-      const registry = create("pypi", undefined, client);
+      const registry = await create("pypi", undefined, client);
       const versions = await registry.fetchVersions("example-package-name");
 
       expect(versions[0].publishedAt).toEqual(new Date("2024-01-01T00:00:00Z"));
@@ -1006,7 +1009,7 @@ describe("Registry Modules", () => {
 
       vi.spyOn(client, "getJSON").mockResolvedValueOnce(mockResponse);
 
-      const registry = create("pypi", undefined, client);
+      const registry = await create("pypi", undefined, client);
       const versions = await registry.fetchVersions("requests");
 
       expect(versions).toHaveLength(0);
@@ -1031,7 +1034,7 @@ describe("Registry Modules", () => {
 
       vi.spyOn(client, "getJSON").mockResolvedValueOnce(mockResponse);
 
-      const registry = create("pypi", undefined, client);
+      const registry = await create("pypi", undefined, client);
       const versions = await registry.fetchVersions("requests");
 
       expect(versions).toHaveLength(2);
@@ -1078,7 +1081,7 @@ describe("Registry Modules", () => {
 
       vi.spyOn(client, "getJSON").mockResolvedValueOnce(mockResponse);
 
-      const registry = create("gem", undefined, client);
+      const registry = await create("gem", undefined, client);
       const pkg = await registry.fetchPackage("rails");
 
       expect(pkg.name).toBe("rails");
@@ -1095,7 +1098,7 @@ describe("Registry Modules", () => {
         new HTTPError(404, "https://mock/not-found", "Not Found"),
       );
 
-      const registry = create("gem", undefined, client);
+      const registry = await create("gem", undefined, client);
 
       await expect(registry.fetchPackage("nonexistent-gem-xyz")).rejects.toThrow(NotFoundError);
     });
@@ -1125,7 +1128,7 @@ describe("Registry Modules", () => {
 
       vi.spyOn(client, "getJSON").mockResolvedValueOnce(mockResponse);
 
-      const registry = create("gem", undefined, client);
+      const registry = await create("gem", undefined, client);
       const versions = await registry.fetchVersions("rails");
 
       expect(versions).toHaveLength(3);
@@ -1156,7 +1159,7 @@ describe("Registry Modules", () => {
 
       const spy = vi.spyOn(client, "getJSON").mockResolvedValueOnce(mockResponse);
 
-      const registry = create("gem", undefined, client);
+      const registry = await create("gem", undefined, client);
       const deps = await registry.fetchDependencies("rails", "5.0.0");
 
       expect(spy).toHaveBeenCalledWith(
@@ -1181,7 +1184,7 @@ describe("Registry Modules", () => {
         new HTTPError(404, "https://mock/not-found", "Not Found"),
       );
 
-      const registry = create("gem", undefined, client);
+      const registry = await create("gem", undefined, client);
 
       await expect(registry.fetchDependencies("rails", "0.0.0")).rejects.toThrow(NotFoundError);
     });
@@ -1266,7 +1269,7 @@ describe("Registry Modules", () => {
 
       vi.spyOn(client, "getJSON").mockResolvedValueOnce(mockResponse);
 
-      const registry = create("composer", undefined, client);
+      const registry = await create("composer", undefined, client);
       const pkg = await registry.fetchPackage("laravel/framework");
 
       expect(pkg.name).toBe("laravel/framework");
@@ -1319,7 +1322,7 @@ describe("Registry Modules", () => {
 
       vi.spyOn(client, "getJSON").mockResolvedValueOnce(mockResponse);
 
-      const registry = create("composer", undefined, client);
+      const registry = await create("composer", undefined, client);
       const pkg = await registry.fetchPackage("laravel/framework");
 
       expect(pkg.latestVersion).toBe("11.5.1");
@@ -1358,7 +1361,7 @@ describe("Registry Modules", () => {
 
       vi.spyOn(client, "getJSON").mockResolvedValueOnce(mockResponse);
 
-      const registry = create("composer", undefined, client);
+      const registry = await create("composer", undefined, client);
       const pkg = await registry.fetchPackage("example/dev-only");
 
       expect(["dev-master", "1.x-dev"]).toContain(pkg.latestVersion);
@@ -1371,7 +1374,7 @@ describe("Registry Modules", () => {
         new HTTPError(404, "https://mock/not-found", "Not Found"),
       );
 
-      const registry = create("composer", undefined, client);
+      const registry = await create("composer", undefined, client);
 
       await expect(registry.fetchPackage("nonexistent/package")).rejects.toThrow(NotFoundError);
     });
@@ -1433,7 +1436,7 @@ describe("Registry Modules", () => {
 
       vi.spyOn(client, "getJSON").mockResolvedValueOnce(mockResponse);
 
-      const registry = create("composer", undefined, client);
+      const registry = await create("composer", undefined, client);
       const versions = await registry.fetchVersions("laravel/framework");
 
       expect(versions).toHaveLength(2);

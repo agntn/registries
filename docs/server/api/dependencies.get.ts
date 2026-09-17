@@ -14,7 +14,7 @@ export interface DependenciesAnswer {
 /** Dependencies of one version; without a version the latest is resolved first, like the CLI. */
 export default defineEventHandler(async (event) => {
   const purl = readPurl(getQuery(event));
-  const lookup = resolveLookup(purl);
+  const lookup = await resolveLookup(purl);
   try {
     let version = lookup.version;
     let resolvedLatest = false;

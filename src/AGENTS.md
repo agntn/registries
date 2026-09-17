@@ -25,12 +25,13 @@ src/
 | Extend public exports | `src/index.ts`                     | Keep grouping order stable (Core, Errors, Helpers, Types, Cache) |
 | Add convenience API   | `src/helpers.ts`                   | Wrap `createFromPURL`; preserve normalization path               |
 | Add CLI command       | `src/commands/*.ts` + `src/cli.ts` | Command file + dynamic import wiring                             |
-| Add ecosystem adapter | `src/registries/*.ts`              | Register through factory + side-effect import hub                |
+| Add ecosystem adapter | `src/registries/*.ts`              | Class file + entry in the `builtins` manifest, no `register()`   |
 | Change shared models  | `src/core/types.ts`                | Impacts all registries and helpers                               |
 
 ## CONVENTIONS
 
-- Direction is inward: commands/registries/cache depend on `core`, not the reverse.
+- Direction is inward: commands/registries/cache depend on `core`, not the reverse. `core/registry.ts` reads only the manifest in `registries/index.ts` and imports an adapter through its `load()` on demand.
+- Nothing runs at import: no module-scope calls or registrations; `sideEffects` is `false`.
 - Use `.ts` import suffixes consistently.
 - Keep barrels (`src/index.ts`, `src/core/index.ts`, `src/cache/index.ts`) as canonical export surfaces.
 

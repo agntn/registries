@@ -77,11 +77,11 @@ export interface Lookup {
 }
 
 /** Resolves a PURL into an adapter with a client that retries once; the browser is waiting. */
-export function resolveLookup(purl: string): Lookup {
+export async function resolveLookup(purl: string): Promise<Lookup> {
   try {
     const parsed = parsePURL(purl);
     const client = new Client({ maxRetries: 1, timeout: LIMITS.timeout, userAgent: "registries.agntn.dev (docs)" });
-    const [registry, name, version] = createFromPURL(purl, client);
+    const [registry, name, version] = await createFromPURL(purl, client);
     return { purl, ecosystem: parsed.type, name, version, registry };
   } catch (error) {
     return toHttpError(error);

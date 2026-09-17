@@ -1,6 +1,6 @@
 import type { Client } from "../core/client.ts";
 import type { Dependency, Maintainer, Package, URLBuilder, Version } from "../core/types.ts";
-import { Registry, register } from "../core/registry.ts";
+import { Registry } from "../core/registry.ts";
 import { combineLicenses, normalizeLicense } from "../core/license.ts";
 import { normalizeRepositoryURL } from "../core/repository.ts";
 import { buildPURL } from "../core/purl.ts";
@@ -217,5 +217,3 @@ export class RubyGemsRegistry extends Registry {
     };
   }
 }
-
-register("gem", "https://rubygems.org", RubyGemsRegistry);

@@ -1,16 +1,7 @@
-import "./registries/index.ts";
-export {
-  AlpmRegistry,
-  CargoRegistry,
-  NpmRegistry,
-  PackagistRegistry,
-  PyPIRegistry,
-  RubyGemsRegistry,
-} from "./registries/index.ts";
-
 // Core API
 export { Client, defaultClient } from "./core/client.ts";
 export { Registry, register, create, ecosystems, has } from "./core/registry.ts";
+export type { RegistryConstructor, RegistryEntry } from "./core/registry.ts";
 export { parsePURL, fullName, createFromPURL, buildPURL } from "./core/purl.ts";
 export { normalizeLicense, combineLicenses } from "./core/license.ts";
 export { normalizeRepositoryURL } from "./core/repository.ts";

@@ -18,7 +18,7 @@ export interface PackageAnswer {
 /** Package metadata through `fetchPackage`, cached for the library's own package TTL. */
 export default defineEventHandler(async (event) => {
   const purl = readPurl(getQuery(event));
-  const lookup = resolveLookup(purl);
+  const lookup = await resolveLookup(purl);
   const params = { ecosystem: lookup.ecosystem, name: lookup.name };
   try {
     return await cachedAnswer<PackageAnswer>(event, "package", params, DEFAULT_TTL.package, async () => {

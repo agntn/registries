@@ -1,6 +1,6 @@
 import type { Client } from "../core/client.ts";
 import type { Dependency, Maintainer, Package, URLBuilder, Version } from "../core/types.ts";
-import { Registry, register } from "../core/registry.ts";
+import { Registry } from "../core/registry.ts";
 import { NotFoundError, InvalidPURLError } from "../core/errors.ts";
 import { combineLicenses } from "../core/license.ts";
 import { normalizeRepositoryURL } from "../core/repository.ts";
@@ -300,5 +300,3 @@ export class PackagistRegistry extends Registry {
     return name === "php" || name.startsWith("ext-");
   }
 }
-
-register("composer", "https://packagist.org", PackagistRegistry);

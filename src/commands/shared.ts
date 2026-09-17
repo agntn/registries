@@ -9,7 +9,6 @@ import {
   InvalidPURLError,
 } from "../core/errors.ts";
 import { CachedRegistry } from "../cache/cached-registry.ts";
-import "../registries/index.ts";
 
 export const sharedArgs = {
   json: {
@@ -29,9 +28,12 @@ export const sharedArgs = {
  *
  * @param input - PURL or shorthand package identifier.
  * @param useCache - Whether to wrap the registry with caching.
- * @returns {[Registry, string, string]} The registry, package name, and version.
+ * @returns {Promise<[Registry, string, string]>} The registry, package name, and version.
  */
-export function resolvePURL(input: string, useCache = true): [Registry, string, string] {
+export async function resolvePURL(
+  input: string,
+  useCache = true,
+): Promise<[Registry, string, string]> {
   let purl = input;
   if (!purl.startsWith("pkg:")) {
     purl = `pkg:${purl}`;
@@ -40,7 +42,7 @@ export function resolvePURL(input: string, useCache = true): [Registry, string, 
   if (useCache) {
     const parsed = parsePURL(purl);
     const baseURL = parsed.qualifiers["repository_url"] ?? "";
-    const inner = create(parsed.type, baseURL || undefined);
+    const inner = await create(parsed.type, baseURL || undefined);
     const reg = new CachedRegistry(inner);
     return [reg, fullName(parsed), parsed.version];
   }

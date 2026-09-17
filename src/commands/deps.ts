@@ -17,7 +17,7 @@ export default defineCommand({
   },
   async run({ args }) {
     await withErrorHandling(async () => {
-      const [reg, name, version] = resolvePURL(args.purl, !args["no-cache"]);
+      const [reg, name, version] = await resolvePURL(args.purl, !args["no-cache"]);
 
       if (!version) {
         // Try to resolve latest version

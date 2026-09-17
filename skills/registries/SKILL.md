@@ -113,7 +113,7 @@ For direct construction, import a concrete class from the registries subpath:
 
 ```typescript
 import { Client } from "@agntn/registries";
-import { NpmRegistry } from "@agntn/registries";
+import { NpmRegistry } from "@agntn/registries/registries/npm";
 
 const npm = new NpmRegistry("https://registry.npmjs.org", new Client());
 
@@ -126,7 +126,7 @@ console.log(urls.documentation("lodash")); // docs URL
 console.log(urls.purl("lodash", "4.17.21")); // PURL string
 ```
 
-Use `create("npm")` for lookup through the registered ecosystem classes.
+Use `await create("npm")` to resolve the adapter by ecosystem key; the module loads on that first call.
 
 ### Cached queries
 
@@ -135,7 +135,7 @@ Wrap any registry with caching:
 ```typescript
 import { create, CachedRegistry } from "@agntn/registries";
 
-const npm = create("npm");
+const npm = await create("npm");
 const cached = new CachedRegistry(npm);
 
 // First call fetches from network, subsequent calls use disk cache
@@ -151,7 +151,7 @@ import { create, selectVersion, resolveDocsUrl } from "@agntn/registries";
 const best = selectVersion(versions, { requested: "4.17.21" });
 
 // Resolve documentation URL with fallback chain
-const npm = create("npm");
+const npm = await create("npm");
 const docsUrl = resolveDocsUrl(pkg, npm.urls(), "4.17.21");
 ```
 

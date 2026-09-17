@@ -1,6 +1,6 @@
 import type { Client } from "../core/client.ts";
 import type { Dependency, Maintainer, Package, URLBuilder, Version } from "../core/types.ts";
-import { Registry, register } from "../core/registry.ts";
+import { Registry } from "../core/registry.ts";
 import { NotFoundError } from "../core/errors.ts";
 import { combineLicenses } from "../core/license.ts";
 import { buildPURL } from "../core/purl.ts";
@@ -473,5 +473,3 @@ export class AlpmRegistry extends Registry {
     };
   }
 }
-
-register("alpm", "https://archlinux.org", AlpmRegistry);
