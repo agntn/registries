@@ -34,7 +34,7 @@ importers:
         specifier: 1.2.76
         version: 1.2.76
       nuxtseo-layer-devtools:
-        specifier: ^5.3.14
+        specifier: 5.3.14
         version: 5.3.14(523dc0e6244479424d2a927653f8fa7b)
       wrangler:
         specifier: 4.128.0
