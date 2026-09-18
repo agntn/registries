@@ -176,10 +176,64 @@ describe("Registry Modules", () => {
       // Old versions' author ("Old Author") is NOT included - only latest version
       expect(maintainers).toHaveLength(3);
       expect(maintainers[0].name).toBe("jdalton");
+      expect(maintainers[0].login).toBe("jdalton");
       expect(maintainers[0].role).toBe("");
       expect(maintainers[1].name).toBe("mathias");
       expect(maintainers[2].name).toBe("Blaine Bublitz");
+      expect(maintainers[2].login).toBe("");
       expect(maintainers[2].role).toBe("contributor");
+    });
+
+    /** npm's maintainers list carries usernames; the local part of an email is not one. */
+    it("should take the login from the maintainer entry, not its email", async () => {
+      const client = new Client();
+      vi.spyOn(client, "getJSON").mockResolvedValueOnce({
+        name: "express",
+        "dist-tags": { latest: "5.1.0" },
+        maintainers: [
+          { name: "ctcpip", email: "c@labsector.com" },
+          { name: "wesleytodd", email: "wes@wesleytodd.com" },
+        ],
+        versions: {
+          "5.1.0": {
+            name: "express",
+            version: "5.1.0",
+            author: { name: "TJ Holowaychuk", email: "tj@vision-media.ca" },
+            contributors: [{ name: "Aaron Heckmann", url: "https://github.com/aheckmann" }],
+          },
+        },
+      });
+
+      const registry = await create("npm", undefined, client);
+      const maintainers = await registry.fetchMaintainers("express");
+
+      expect(maintainers).toEqual([
+        { uuid: "", login: "ctcpip", name: "ctcpip", email: "c@labsector.com", url: "", role: "" },
+        {
+          uuid: "",
+          login: "wesleytodd",
+          name: "wesleytodd",
+          email: "wes@wesleytodd.com",
+          url: "",
+          role: "",
+        },
+        {
+          uuid: "",
+          login: "",
+          name: "TJ Holowaychuk",
+          email: "tj@vision-media.ca",
+          url: "",
+          role: "author",
+        },
+        {
+          uuid: "",
+          login: "",
+          name: "Aaron Heckmann",
+          email: "",
+          url: "https://github.com/aheckmann",
+          role: "contributor",
+        },
+      ]);
     });
 
     it("should fetch dependencies from per-version endpoint", async () => {
