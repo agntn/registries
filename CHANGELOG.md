@@ -1,5 +1,24 @@
 # Changelog
 
+## v0.4.1
+
+[compare changes](https://github.com/agntn/registries/compare/v0.4.0...v0.4.1)
+
+### 🩹 Fixes
+
+- **npm:** Login is the npm username ([#88](https://github.com/agntn/registries/pull/88))
+
+### 🏡 Chore
+
+- Add `renovate.json` ([9a188ee](https://github.com/agntn/registries/commit/9a188ee))
+- Remove `CLAUDE.md` ([d9826cf](https://github.com/agntn/registries/commit/d9826cf))
+- **lint:** Leave CHANGELOG.md to changelogen ([#85](https://github.com/agntn/registries/pull/85))
+
+### ❤️ Contributors
+
+- Aeitwoen ([@aeitwoen](https://github.com/aeitwoen))
+- Ori ([@oritwoen](https://github.com/oritwoen))
+
 ## v0.4.0
 
 [compare changes](https://github.com/agntn/registries/compare/v0.3.1...v0.4.0)
