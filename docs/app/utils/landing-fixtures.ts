@@ -96,13 +96,13 @@ export const LANDING_SAMPLES: readonly LookupSample[] = [
     "dependenciesTotal": 0,
     "maintainers": [
       {
-        "login": "john.david.dalton",
+        "login": "jdalton",
         "name": "jdalton",
         "role": "",
         "url": ""
       },
       {
-        "login": "mathias",
+        "login": "",
         "name": "Mathias Bynens",
         "role": "contributor",
         "url": ""

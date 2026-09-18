@@ -229,39 +229,58 @@ export class NpmRegistry extends Registry {
     author: Readonly<NpmPerson> | undefined,
     contributors: readonly NpmPerson[] | undefined,
   ): Maintainer[] {
-    const candidates: Array<readonly [NpmPerson, string]> = [
-      ...(maintainers ?? []).map((maintainer) => [maintainer, ""] as const),
-      ...(author ? [[author, "author"] as const] : []),
-      ...(contributors ?? []).map((contributor) => [contributor, "contributor"] as const),
+    const candidates: Maintainer[] = [
+      ...(maintainers ?? []).map((maintainer) => this.toAccount(maintainer)),
+      ...(author ? [this.toPerson(author, "author")] : []),
+      ...(contributors ?? []).map((contributor) => this.toPerson(contributor, "contributor")),
     ];
     const seen = new Set<string>();
     const result: Maintainer[] = [];
 
-    for (const [maintainer, role] of candidates) {
-      const key = this.maintainerKey(maintainer.name, maintainer.email);
+    for (const candidate of candidates) {
+      const key = candidate.email || candidate.name;
       if (!key || seen.has(key)) continue;
       seen.add(key);
-      result.push(this.toMaintainer(maintainer, role));
+      result.push(candidate);
     }
 
     return result;
   }
 
-  private toMaintainer(maintainer: Readonly<NpmPerson>, role: string): Maintainer {
+  /**
+   * A `maintainers` entry is an npm account, and its `name` is the username.
+   *
+   * @param maintainer - One entry of the package document's `maintainers`.
+   * @returns {Maintainer} The account, with the username as both `login` and `name`.
+   */
+  private toAccount(maintainer: Readonly<NpmPerson>): Maintainer {
+    const login = maintainer.name || "";
     return {
       uuid: "",
-      login: maintainer.email ? maintainer.email.split("@")[0] : "",
-      name: maintainer.name || "",
+      login,
+      name: login,
       email: maintainer.email || "",
       url: maintainer.url || "",
-      role,
+      role: "",
     };
   }
 
-  private maintainerKey(name: string | undefined, email: string | undefined): string {
-    if (email) return email;
-    if (name) return name;
-    return "";
+  /**
+   * `author` and `contributors` come from package.json, where nobody has an npm login.
+   *
+   * @param person - One person of the latest version's `author` or `contributors`.
+   * @param role - The role that field stands for.
+   * @returns {Maintainer} The person, with an empty `login`.
+   */
+  private toPerson(person: Readonly<NpmPerson>, role: string): Maintainer {
+    return {
+      uuid: "",
+      login: "",
+      name: person.name || "",
+      email: person.email || "",
+      url: person.url || "",
+      role,
+    };
   }
 
   private encodeName(name: string): string {
