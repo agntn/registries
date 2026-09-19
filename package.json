@@ -91,7 +91,7 @@
     "@earendil-works/pi-coding-agent": "0.84.2",
     "@oh-my-pi/omptype": "18.0.0",
     "@oh-my-pi/pi-coding-agent": "18.0.0",
-    "@types/node": "25.3.0",
+    "@types/node": "25.3.5",
     "ai": "6.0.116",
     "changelogen": "0.6.2",
     "obuild": "0.4.31",
