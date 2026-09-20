@@ -21,7 +21,7 @@
     "@iconify-json/lucide": "1.2.132",
     "@iconify-json/simple-icons": "1.2.94",
     "@iconify-json/vscode-icons": "1.2.76",
-    "nuxtseo-layer-devtools": "5.3.14",
+    "nuxtseo-layer-devtools": "5.3.16",
     "wrangler": "4.128.0"
   }
 }
