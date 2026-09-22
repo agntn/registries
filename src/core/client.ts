@@ -2,11 +2,12 @@ import { ofetch, FetchError } from "ofetch";
 import type { $Fetch, FetchOptions } from "ofetch";
 import type { ClientOptions, RateLimiter } from "./types.ts";
 import { HTTPError, RateLimitError } from "./errors.ts";
+import { version } from "../version.ts";
 
 const DEFAULT_MAX_RETRIES = 5;
 const DEFAULT_BASE_DELAY = 50;
 const DEFAULT_TIMEOUT = 30_000;
-const DEFAULT_USER_AGENT = "registries/0.1.0";
+const DEFAULT_USER_AGENT = `agntn-registries/${version} (+https://github.com/agntn/registries)`;
 const MAX_TIMER_DELAY = 2_147_483_647;
 
 function retryCount(value: unknown): number {
