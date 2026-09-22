@@ -38,11 +38,7 @@ describe("Registries MCP server", () => {
     expect(response.content).toEqual([
       {
         type: "text",
-        text: JSON.stringify(
-          { ecosystems: ["alpm", "cargo", "composer", "gem", "npm", "pypi"] },
-          null,
-          2,
-        ),
+        text: '{"ecosystems":["alpm","cargo","composer","gem","npm","pypi"]}',
       },
     ]);
   });

@@ -33,7 +33,7 @@ export interface BulkPackagesParams {
 
 function jsonResult<T>(details: T): ToolResult<T> {
   return {
-    content: [{ type: "text", text: JSON.stringify(details, null, 2) }],
+    content: [{ type: "text", text: JSON.stringify(details) }],
     details,
   };
 }

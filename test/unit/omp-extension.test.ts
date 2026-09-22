@@ -81,6 +81,9 @@ describe("registries OMP extension", () => {
     const content = result.content[0];
     expect(content?.type).toBe("text");
     if (content?.type !== "text") throw new Error("Expected text tool content");
-    expect(content.text).toContain('"npm"');
+    expect(content.text).toBe('{"ecosystems":["alpm","cargo","composer","gem","npm","pypi"]}');
+    expect(result.details).toEqual({
+      ecosystems: ["alpm", "cargo", "composer", "gem", "npm", "pypi"],
+    });
   });
 });
