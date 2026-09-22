@@ -1,5 +1,6 @@
-import { parseRetryAfter, retryDelayFor } from "../../src/core/client.ts";
+import { Client, parseRetryAfter, retryDelayFor } from "../../src/core/client.ts";
 import { RateLimitError } from "../../src/core/errors.ts";
+import { version } from "../../src/version.ts";
 
 describe("parseRetryAfter", () => {
   it("parses numeric seconds", () => {
@@ -75,5 +76,37 @@ describe("retryDelayFor", () => {
     // Node timers accept at most 2_147_483_647 ms, so these straddle that ceiling in seconds.
     expect(retryDelayFor("2147483", 10)).toBe(2_147_483_000);
     expect(() => retryDelayFor("2147484", 10)).toThrow(RateLimitError);
+  });
+});
+
+describe("Client", () => {
+  const fetch = vi.fn<typeof globalThis.fetch>(async () => Response.json({}));
+
+  beforeEach(() => {
+    fetch.mockClear();
+    vi.stubGlobal("fetch", fetch);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  function sentUserAgent(): string | null {
+    const init = fetch.mock.calls[0]?.[1];
+    return new Headers(init?.headers).get("User-Agent");
+  }
+
+  it("should identify the installed release in the default User-Agent", async () => {
+    await new Client().getJSON("https://registry.example/pkg");
+
+    expect(sentUserAgent()).toBe(
+      `agntn-registries/${version} (+https://github.com/agntn/registries)`,
+    );
+  });
+
+  it("should send a caller-supplied User-Agent unchanged", async () => {
+    await new Client({ userAgent: "my-tool/1.0" }).getJSON("https://registry.example/pkg");
+
+    expect(sentUserAgent()).toBe("my-tool/1.0");
   });
 });
