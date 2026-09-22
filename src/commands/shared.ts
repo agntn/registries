@@ -16,10 +16,11 @@ export const sharedArgs = {
     description: "Output as JSON",
     default: false,
   },
-  "no-cache": {
+  cache: {
     type: "boolean" as const,
-    description: "Bypass cache, fetch fresh data",
-    default: false,
+    description: "Read and write cached results",
+    negativeDescription: "Bypass cache reads and writes, fetch fresh data",
+    default: true,
   },
 } as const;
 
