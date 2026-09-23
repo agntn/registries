@@ -1,5 +1,23 @@
 # Changelog
 
+## v0.4.2
+
+[compare changes](https://github.com/agntn/registries/compare/v0.4.1...v0.4.2)
+
+### 🔥 Performance
+
+- Spend fewer tokens on tool results ([#108](https://github.com/agntn/registries/pull/108))
+
+### 🩹 Fixes
+
+- **cli:** Bypass storage with --no-cache ([#109](https://github.com/agntn/registries/pull/109))
+- **client:** Send the real version in User-Agent ([#111](https://github.com/agntn/registries/pull/111))
+
+### ❤️ Contributors
+
+- Ori ([@oritwoen](https://github.com/oritwoen))
+- Aeitwoen ([@aeitwoen](https://github.com/aeitwoen))
+
 ## v0.4.1
 
 [compare changes](https://github.com/agntn/registries/compare/v0.4.0...v0.4.1)
