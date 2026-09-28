@@ -53,7 +53,8 @@ export function useLandingLookup() {
   }
 
   function step(delta: number) {
-    tick.value = Math.max(0, tick.value + delta);
+    /** Wraps both ways, so Previous on the first sample goes to the last one. */
+    tick.value = (tick.value + delta + samples.value.length) % samples.value.length;
     void refresh(current.value);
   }
 

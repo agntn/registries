@@ -41,3 +41,8 @@ export function displayName(pkg: { readonly name: string; readonly namespace: st
   }
   return `${pkg.namespace}/${pkg.name}`;
 }
+
+/** A registry URL as a link target only when it is http(s); anything else a package owner typed stays text. */
+export function webHref(url: string | null | undefined): string | undefined {
+  return url && /^https?:\/\//iu.test(url) ? url : undefined;
+}

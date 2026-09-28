@@ -1,4 +1,5 @@
 import { fileURLToPath } from "node:url";
+import { registriesTheme } from "./shiki-theme";
 
 /** Bundled from the checkout's sources: a deploy needs neither dist/ nor the root node_modules. */
 const librarySource = fileURLToPath(new URL("../src/", import.meta.url));
@@ -21,52 +22,82 @@ export default defineNuxtConfig({
   llms: {
     domain: "https://registries.agntn.dev",
   },
+  /** Docus pages define their own OG images; the alt text is the one thing they leave unset. */
+  ogImage: {
+    defaults: {
+      alt: "@agntn/registries: one PURL, every registry",
+    },
+  },
   icon: {
     clientBundle: {
       icons: [
+        "lucide:arrow-down",
+        "lucide:arrow-left",
         "lucide:arrow-right",
+        "lucide:arrow-up",
         "lucide:arrow-up-right",
         "lucide:book-open",
         "lucide:bot",
-        "lucide:box",
-        "lucide:boxes",
         "lucide:check",
+        "lucide:check-circle",
+        "lucide:chevron-down",
         "lucide:chevron-left",
         "lucide:chevron-right",
+        "lucide:chevrons-up-down",
+        "lucide:circle-alert",
+        "lucide:circle-x",
         "lucide:copy",
         "lucide:database",
+        "lucide:expand",
         "lucide:external-link",
         "lucide:git-fork",
-        "lucide:hash",
-        "lucide:layers",
+        "lucide:info",
         "lucide:library",
+        "lucide:lightbulb",
         "lucide:link",
         "lucide:loader-circle",
         "lucide:package",
         "lucide:package-search",
         "lucide:plus",
         "lucide:search",
-        "lucide:shield-alert",
         "lucide:tag",
         "lucide:terminal",
+        "lucide:triangle-alert",
         "lucide:users",
         "lucide:x",
+        "simple-icons:anthropic",
         "simple-icons:archlinux",
         "simple-icons:composer",
+        "simple-icons:cursor",
         "simple-icons:github",
+        "simple-icons:markdown",
         "simple-icons:npm",
+        "simple-icons:openai",
         "simple-icons:pypi",
         "simple-icons:rubygems",
         "simple-icons:rust",
         "vscode-icons:file-type-js",
-        "vscode-icons:file-type-typescript",
         "vscode-icons:file-type-json",
         "vscode-icons:file-type-shell",
+        "vscode-icons:file-type-typescript",
       ],
     },
   },
   colorMode: {
     preference: "dark",
+  },
+  app: {
+    head: {
+      link: [
+        { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
+        { rel: "apple-touch-icon", sizes: "180x180", href: "/apple-touch-icon.png" },
+        { rel: "manifest", href: "/site.webmanifest" },
+      ],
+      meta: [
+        { name: "theme-color", content: "#0b0d10" },
+        { name: "apple-mobile-web-app-title", content: "registries" },
+      ],
+    },
   },
   /** Docus ships an MCP endpoint that needs the Cloudflare Agents SDK on Workers. The docs do not need it. */
   mcp: {
@@ -101,8 +132,8 @@ export default defineNuxtConfig({
   css: ["~/assets/fonts.css"],
   fonts: {
     families: [
-      { name: "Space Grotesk", provider: "local", weights: [400, 500, 600] },
-      { name: "Space Mono", provider: "local", weights: [400, 700] },
+      { name: "Figtree", provider: "local", weights: [400, 500] },
+      { name: "Fira Code", provider: "local", weights: [400, 500] },
     ],
   },
   content: {
@@ -114,9 +145,9 @@ export default defineNuxtConfig({
       markdown: {
         highlight: {
           theme: {
-            default: "github-light",
-            light: "github-light",
-            dark: "poimandres",
+            default: registriesTheme,
+            light: registriesTheme,
+            dark: registriesTheme,
           },
         },
       },
