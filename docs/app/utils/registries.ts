@@ -18,6 +18,8 @@ export interface EcosystemInfo {
   readonly statuses: string;
   /** What the maintainers call answers with. */
   readonly maintainers: string;
+  /** One sentence on how the adapter reads this registry, for the roster. */
+  readonly about: string;
   readonly to: string;
 }
 
@@ -33,6 +35,7 @@ export const ECOSYSTEMS: readonly EcosystemInfo[] = [
     example: "pkg:npm/lodash",
     statuses: "deprecated",
     maintainers: "maintainers, author, contributors",
+    about: "One package document from registry.npmjs.org. Scopes in the namespace, deprecated as a status.",
     to: "/registries/npm",
   },
   {
@@ -46,6 +49,7 @@ export const ECOSYSTEMS: readonly EcosystemInfo[] = [
     example: "pkg:cargo/serde",
     statuses: "yanked",
     maintainers: "owner users",
+    about: "Crate, versions, dependencies and owners across four endpoints. yanked as a status, docs.rs for docs.",
     to: "/registries/cargo",
   },
   {
@@ -59,6 +63,7 @@ export const ECOSYSTEMS: readonly EcosystemInfo[] = [
     example: "pkg:pypi/flask",
     statuses: "yanked",
     maintainers: "author",
+    about: "JSON API for metadata, Simple API for versions. Names normalized per PEP 503, extras become scopes.",
     to: "/registries/pypi",
   },
   {
@@ -72,6 +77,7 @@ export const ECOSYSTEMS: readonly EcosystemInfo[] = [
     example: "pkg:gem/rails",
     statuses: "yanked",
     maintainers: "owners",
+    about: "Gem, versions, dependencies of each version and owners. yanked as a status, rubydoc for docs.",
     to: "/registries/rubygems",
   },
   {
@@ -85,6 +91,7 @@ export const ECOSYSTEMS: readonly EcosystemInfo[] = [
     example: "pkg:composer/laravel/framework",
     statuses: "none",
     maintainers: "authors across versions, deduplicated",
+    about: "One document per vendor/name with every version inside. php and ext-* requirements skipped.",
     to: "/registries/packagist",
   },
   {
@@ -98,6 +105,7 @@ export const ECOSYSTEMS: readonly EcosystemInfo[] = [
     example: "pkg:alpm/arch/pacman",
     statuses: "deprecated when flagged out of date",
     maintainers: "maintainers, AUR maintainer",
+    about: "Official repos and the AUR behind one type, routed by namespace. One version per package, flagged out of date as deprecated.",
     to: "/registries/alpm",
   },
 ];
@@ -117,4 +125,22 @@ export function ecosystemOf(purl: string): string {
   const withoutScheme = purl.trim().replace(/^pkg:/u, "");
   const slash = withoutScheme.indexOf("/");
   return (slash === -1 ? withoutScheme : withoutScheme.slice(0, slash)).toLowerCase();
+}
+
+/** The four lookups every adapter answers, in the order the explorer and the tool list them. */
+export const LOOKUPS = [
+  { key: "package", label: "Package", method: "fetchPackage", cli: "info", icon: "i-lucide-package" },
+  { key: "versions", label: "Versions", method: "fetchVersions", cli: "versions", icon: "i-lucide-tag" },
+  { key: "dependencies", label: "Dependencies", method: "fetchDependencies", cli: "deps", icon: "i-lucide-git-fork" },
+  { key: "maintainers", label: "Maintainers", method: "fetchMaintainers", cli: "maintainers", icon: "i-lucide-users" },
+] as const;
+
+export type LookupKey = (typeof LOOKUPS)[number]["key"];
+
+/** Every API host the adapters talk to; Arch Linux reads the official repos and the AUR. */
+export const HOSTS: readonly string[] = ECOSYSTEMS.flatMap((ecosystem) => ecosystem.host.split(", "));
+
+/** The adapter's module under `@agntn/registries/registries/`, which is its page's slug: `gem` lives in `rubygems`. */
+export function adapterModule(ecosystem: EcosystemInfo): string {
+  return ecosystem.to.slice(ecosystem.to.lastIndexOf("/") + 1);
 }

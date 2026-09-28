@@ -1,32 +1,143 @@
 <script setup lang="ts">
 import type { LookupSample } from "../../utils/landing-fixtures";
-import { ecosystemInfo } from "../../utils/registries";
+import { ECOSYSTEMS, adapterModule, ecosystemInfo } from "../../utils/registries";
+import { tokens } from "../../utils/tokens";
 
 const props = defineProps<{ sample: LookupSample }>();
 
+const { copied, copy } = useCopied();
+
 const info = computed(() => ecosystemInfo(props.sample.ecosystem));
-const fileName = computed(() => `${props.sample.ecosystem}.ts`);
-const licenses = computed(() => props.sample.package.licenses || "");
+
+/** Every sample gets the same nine lines, so the file keeps one height while the registry changes. */
+const lines = computed(() => {
+  const { purl, package: pkg, versionsTotal, dependenciesTotal, maintainersTotal } = props.sample;
+  return [
+    'import { createFromPURL } from "@agntn/registries";',
+    "",
+    `// ${info.value?.className ?? props.sample.ecosystem}, imported on the first create()`,
+    `const [registry, name] = await createFromPURL("${purl}");`,
+    "const pkg = await registry.fetchPackage(name);",
+    "const versions = await registry.fetchVersions(name);",
+    "const deps = await registry.fetchDependencies(name, pkg.latestVersion);",
+    "const people = await registry.fetchMaintainers(name);",
+    `// "${pkg.latestVersion}", ${versionsTotal} versions, ${dependenciesTotal} deps, ${maintainersTotal} maintainers`,
+  ];
+});
 </script>
-
 <template>
-  <div class="registries-frame overflow-hidden rounded-xl">
-    <div class="flex items-center gap-2 border-b border-muted px-4 py-3">
-      <span class="font-mono text-[10px] font-bold text-primary">TS</span>
-      <span class="text-sm text-default">
-        <Transition name="registries-roll" mode="out-in">
-          <span :key="fileName">{{ fileName }}</span>
-        </Transition>
-      </span>
+  <section class="tool-console landing-file" aria-label="The same calls on every registry">
+    <span class="console-cross console-cross-tl" aria-hidden="true">+</span>
+    <span class="console-cross console-cross-br" aria-hidden="true">+</span>
+
+    <header class="console-bar">
+      <span class="console-title file-name"
+        ><span class="console-tag">File</span
+        ><Transition name="registries-roll" mode="out-in"
+          ><span :key="sample.ecosystem" class="registries-roll-slot"
+            >{{ sample.ecosystem }}.ts</span
+          ></Transition
+        ></span
+      >
+      <span class="console-meta">same calls · {{ ECOSYSTEMS.length }} registries</span>
+      <span class="console-mark" aria-hidden="true" />
+    </header>
+    <div class="console-ruler" aria-hidden="true">
+      <span :key="sample.ecosystem" class="console-cursor" />
     </div>
-    <pre class="registries-rotating"><code><span class="tok-kw">import</span> { fetchPackageFromPURL } <span class="tok-kw">from</span> <span class="tok-str">"@agntn/registries"</span>;
 
-<span class="tok-kw">const</span> pkg = <span class="tok-kw">await</span> <span class="tok-fn">fetchPackageFromPURL</span>(<span class="tok-str">"<Transition name="registries-roll" mode="out-in"><span :key="sample.purl" class="registries-roll-slot">{{ sample.purl }}</span></Transition>"</span>);
+    <div class="file-body">
+      <p class="console-label console-rule-title">
+        <span>Read <span aria-hidden="true">[ whichever registry the PURL names ]</span></span>
+        <span class="console-mark" aria-hidden="true" />
+        <UButton
+          color="neutral"
+          variant="subtle"
+          :icon="copied === 'file' ? 'i-lucide-check' : 'i-lucide-copy'"
+          :label="copied === 'file' ? 'copied' : 'copy'"
+          :aria-label="copied === 'file' ? 'Copied' : 'Copy the file'"
+          @click="copy('file', lines.join('\n'))"
+        />
+      </p>
+      <!-- prettier-ignore -->
+      <pre class="console-snippet console-lines file-lines"><code><span v-for="(line, index) in lines" :key="index"><span v-for="(token, part) in tokens(line)" :key="part" :class="token.cls">{{ token.text }}</span></span></code></pre>
+    </div>
 
-pkg.latestVersion; <span class="tok-cm">// "<Transition name="registries-roll" mode="out-in"><span :key="sample.package.latestVersion" class="registries-roll-slot">{{ sample.package.latestVersion }}</span></Transition>"</span>
-pkg.licenses;      <span class="tok-cm">// "<Transition name="registries-roll" mode="out-in"><span :key="licenses" class="registries-roll-slot">{{ licenses }}</span></Transition>"</span>
-pkg.repository;    <span class="tok-cm">// "<Transition name="registries-roll" mode="out-in"><span :key="sample.package.repository" class="registries-roll-slot">{{ sample.package.repository || "" }}</span></Transition>"</span>
-
-<span class="tok-cm">// same shape from <Transition name="registries-roll" mode="out-in"><span :key="sample.ecosystem" class="registries-roll-slot">{{ info?.className ?? sample.ecosystem }}</span></Transition> as from every other adapter</span></code></pre>
-  </div>
+    <footer class="console-footer console-footer-plain">
+      <NuxtLink :to="info?.to ?? '/registries'" class="file-link"
+        ><span aria-hidden="true">→ </span>{{ info?.label ?? sample.ecosystem
+        }}<span> · @agntn/registries/registries/{{ info ? adapterModule(info) : sample.ecosystem }}</span></NuxtLink
+      >
+      <span class="console-meta">lazy import</span>
+    </footer>
+  </section>
 </template>
+
+<style scoped>
+.file-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.file-name :deep(.registries-roll-slot) {
+  display: inline;
+}
+.file-body {
+  padding: 14px 20px 16px;
+}
+.file-body > .console-rule-title {
+  margin-bottom: 10px;
+}
+/* One line per code line whatever the registry: long names end in an ellipsis, copy hands out the whole line. */
+.file-lines > code > span {
+  overflow: hidden;
+  padding-left: calc(2.25em + 1em);
+  text-indent: 0;
+  text-overflow: ellipsis;
+  white-space: pre;
+}
+.file-lines > code > span::before {
+  margin-left: calc(-2.25em - 1em);
+}
+.file-lines > code > span :deep(*) {
+  white-space: pre;
+  overflow-wrap: normal;
+}
+.landing-file > .console-footer {
+  flex-wrap: nowrap;
+}
+.landing-file > .console-footer > .console-meta {
+  flex: none;
+}
+.file-link {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ui-text-highlighted);
+}
+.file-link > span:last-child {
+  color: var(--ui-text-dimmed);
+}
+.file-link:hover {
+  color: var(--console-accent);
+}
+.file-link:focus-visible {
+  outline: 1px solid var(--ui-primary);
+  outline-offset: 3px;
+}
+@media (width < 640px) {
+  .file-body > .console-rule-title > .console-mark {
+    display: none;
+  }
+}
+@media (width < 400px) {
+  .file-body {
+    padding-inline: 14px;
+  }
+  .file-body > .console-rule-title > span:first-child > span {
+    display: none;
+  }
+}
+</style>

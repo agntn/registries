@@ -1,20 +1,22 @@
 # docs/
 
-Docus site for `@agntn/registries`. Markdown lives in `content/`. The lookup explorer is a Vue page in the Nuxt app backed by Nitro routes over the library, not a script.
+Docus site for `@agntn/registries`. Markdown lives in `content/`. The lookup explorer is a Vue page in the Nuxt app backed by Nitro routes over the library, not a script. The look follows the agntn instrument family; [DESIGN.md](DESIGN.md) lists the instruments this site owns and where it departs from the family.
 
 ## Layout
 
 ```
 docs/
+├── DESIGN.md                      # instruments this site owns, their anatomy, departures from the family rules
 ├── nuxt.config.ts                 # extends: ['docus'], cloudflare_module preset (Workers), @agntn/registries aliased to ../src
-├── app/app.config.ts              # title, github, theme
-├── app/app.css                    # theme tokens (light + .dark), shared `registries-*` classes
-├── app/components/                # Docus overrides: AppHeaderLogo, AppHeaderCTA (nav), AppFooterLeft, DocsAsideLeftBody
-├── app/components/content/        # MDC components (`::landing-home`, `::registry-facts`, `::lookup-explorer`)
+├── shiki-theme.ts                 # code blocks in the palette of the tok-* classes, every colour a --shiki-token-* variable
+├── app/app.config.ts              # title, github, the Nuxt UI variants that carry the family look
+├── app/app.css                    # tokens, the shared `console-*` and `hero-*` grammar, `registries-*` classes
+├── app/components/                # Docus overrides (header, tabs, sidebar, toc, page links, surround, callout), LookupSearch, LookupAnswer
+├── app/components/content/        # MDC components (`::landing-home`, `::registry-facts`, `::registry-matrix`), Prose overrides, ConsoleReticle, ConsoleResponse
 ├── app/components/OgImage/        # Docs.takumi and Landing.takumi override the Docus OG templates
 ├── app/assets/fonts.css           # @font-face for the TTFs served from public/fonts (site and OG images)
-├── app/composables/               # useLandingLookup (one clock for every live panel), useSubNavigation
-├── app/utils/                     # ecosystems table, formatting, recorded landing samples
+├── app/composables/               # useLandingLookup (one clock for every live panel), useLookup (the explorer's state), useSubNavigation, useCopied, useRosterFlip
+├── app/utils/                     # ecosystems table, formatting, recorded landing samples, roster classes, tokenizers
 ├── app/pages/lookup.vue           # explorer, own route outside the docs layout
 ├── server/api/                    # package, versions, dependencies, maintainers, ecosystems over the library
 ├── server/utils/query.ts          # parameter caps, cache, rate limit, error mapping
@@ -49,7 +51,7 @@ Resolution traps, both caused by the repo root being a pnpm workspace:
 - Library errors are mapped in `toHttpError`: `NotFoundError` 404, `InvalidPURLError` and `UnknownEcosystemError` 400, `RateLimitError` 429, `HTTPError` 502.
 - `app/utils/landing-fixtures.ts` holds answers recorded through the library so the landing paints before the worker answers. Regenerate it with a script over `dist/index.mjs` (`createFromPURL` plus the four lookups for the six example PURLs); never edit the recorded values by hand.
 - In production the cache lives in the KV binding `CACHE` (`$production.nitro.storage.cache`); locally it is in memory.
-- The explorer applies its deep link through a `watch(route.query)` that fires once: a prerendered page hydrates with an empty query and Nuxt restores the address after mount.
+- The explorer reads its deep link from `window.location.search` on mount: a prerendered page hydrates with an empty `route.query` and Nuxt restores it only after mount.
 
 ## OG images
 
@@ -60,5 +62,5 @@ Resolution traps, both caused by the repo root being a pnpm workspace:
 ## Constraints
 
 - Registry metadata is untrusted data. Render descriptions, keywords and maintainer fields as text; never `v-html`.
-- Ecosystem names, icons, class names and example PURLs live once in `app/utils/registries.ts`. The sidebar, the landing grid, the explorer and `::registry-facts` read from it.
+- Ecosystem names, icons, class names, example PURLs and the roster sentence live once in `app/utils/registries.ts`. The sidebar, the roster, the lookup form, the explorer and `::registry-facts` read from it. Counts on the page come from there or from the library (`/api/ecosystems` reads `builtins`), never typed into copy.
 - Keep the docs API shapes (`PackageAnswer` and friends) in the route files; the explorer mirrors them as local interfaces.
