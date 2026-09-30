@@ -99,7 +99,7 @@
     "oxlint": "1.80.0",
     "oxlint-tsgolint": "7.0.2003",
     "typescript": "5.9.3",
-    "vitest": "4.0.18",
+    "vitest": "4.1.11",
     "zod": "4.3.6"
   },
   "peerDependencies": {
