@@ -17,14 +17,17 @@ const bundleTypeboxHook: NonNullable<BuildConfig["hooks"]> = {
     const isTypebox = (id: string) => /^typebox(?:\/|$)/.test(id);
 
     if (typeof originalExternal === "function") {
-      config.external = async (id, importer, isResolved) =>
+      config.external = (id, importer, isResolved) =>
         isTypebox(id) ? false : originalExternal(id, importer, isResolved);
       return;
     }
 
+    /** obuild marks the typebox peer external by name and by subpath pattern, and both have to go. */
     if (Array.isArray(originalExternal)) {
-      config.external = originalExternal.filter(
-        (item) => !(typeof item === "string" && isTypebox(item)),
+      config.external = originalExternal.filter((item) =>
+        typeof item === "string"
+          ? !isTypebox(item)
+          : !(item instanceof RegExp && item.test("typebox/value")),
       );
     }
   },

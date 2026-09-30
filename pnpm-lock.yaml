@@ -20,9 +20,6 @@ importers:
       ofetch:
         specifier: 1.5.1
         version: 1.5.1
-      typebox:
-        specifier: 1.3.34
-        version: 1.3.34
       unstorage:
         specifier: 1.17.5
         version: 1.17.5
@@ -60,6 +57,9 @@ importers:
       oxlint-tsgolint:
         specifier: 7.0.2003
         version: 7.0.2003
+      typebox:
+        specifier: 1.3.34
+        version: 1.3.34
       typescript:
         specifier: 5.9.3
         version: 5.9.3
