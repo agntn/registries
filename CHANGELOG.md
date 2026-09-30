@@ -1,5 +1,22 @@
 # Changelog
 
+## v0.4.3
+
+[compare changes](https://github.com/agntn/registries/compare/v0.4.2...v0.4.3)
+
+### 🚀 Enhancements
+
+- **docs:** Console grammar across the whole site ([#125](https://github.com/agntn/registries/pull/125))
+
+### 🩹 Fixes
+
+- **deps:** Move typebox out of dependencies ([#135](https://github.com/agntn/registries/pull/135))
+
+### ❤️ Contributors
+
+- Ori ([@oritwoen](https://github.com/oritwoen))
+- Aeitwoen ([@aeitwoen](https://github.com/aeitwoen))
+
 ## v0.4.2
 
 [compare changes](https://github.com/agntn/registries/compare/v0.4.1...v0.4.2)
