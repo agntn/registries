@@ -82,7 +82,8 @@ docs/                # Docus site: guide, registry pages, live lookup explorer o
 
 ### HTTP
 
-- All network calls go through `Client` (`src/core/client.ts`). No direct `fetch` or `ofetch` in registries.
+- All network calls go through `Client` (`src/core/client.ts`). No direct `fetch` in registries.
+- `Client` runs on the native `fetch`, with no HTTP library underneath. Retries, backoff, `Retry-After`, the per-attempt timeout and cancellation all live in its loop, and a failed request leaves it as `HTTPError` or `RateLimitError`.
 - Retry/backoff constants live in `client.ts` only.
 
 ### Registries

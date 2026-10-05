@@ -29,12 +29,12 @@ describe("build config", () => {
 
   it("should inline typebox and its subpaths into dist", async () => {
     const config: Parameters<RolldownConfigHook>[0] = {
-      external: [/^#/, "node:fs", "ofetch", /^ofetch\//, "typebox", /^typebox\//],
+      external: [/^#/, "node:fs", "unstorage", /^unstorage\//, "typebox", /^typebox\//],
     };
 
     /** SAFETY: the hook reads only the rolldown options, never the build context. */
     await buildConfig.hooks?.rolldownConfig?.(config, {} as Parameters<RolldownConfigHook>[1]);
 
-    expect(config.external).toEqual([/^#/, "node:fs", "ofetch", /^ofetch\//]);
+    expect(config.external).toEqual([/^#/, "node:fs", "unstorage", /^unstorage\//]);
   });
 });

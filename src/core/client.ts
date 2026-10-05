@@ -1,5 +1,3 @@
-import { ofetch, FetchError } from "ofetch";
-import type { $Fetch, FetchOptions } from "ofetch";
 import type { ClientOptions, RateLimiter } from "./types.ts";
 import { HTTPError, RateLimitError } from "./errors.ts";
 import { version } from "../version.ts";
@@ -9,10 +7,6 @@ const DEFAULT_BASE_DELAY = 50;
 const DEFAULT_TIMEOUT = 30_000;
 const DEFAULT_USER_AGENT = `agntn-registries/${version} (+https://github.com/agntn/registries)`;
 const MAX_TIMER_DELAY = 2_147_483_647;
-
-function retryCount(value: unknown): number {
-  return typeof value === "number" ? value : 0;
-}
 
 function parseRetryAfterValue(header: string | null | undefined): number | undefined {
   if (!header) return undefined;
@@ -59,6 +53,23 @@ export function retryDelayFor(header: string | null | undefined, fallbackDelay: 
   return Math.max(fallbackDelay, retryAfterDelay);
 }
 
+/** Statuses worth another go: timeouts, conflicts, rate limits and servers having a bad day. */
+const RETRY_STATUS_CODES = new Set([408, 409, 425, 429, 500, 502, 503, 504]);
+
+/** Statuses whose response never carries a body. */
+const EMPTY_STATUS_CODES = new Set([101, 204, 205, 304]);
+
+/** One finished attempt: the decoded body, or the error it ends on if nobody retries. */
+type Attempt =
+  | { readonly ok: true; readonly data: unknown }
+  | {
+      readonly ok: false;
+      readonly error: Error;
+      readonly retryable: boolean;
+      readonly status?: number;
+      readonly retryAfter?: string | null;
+    };
+
 /** HTTP client with retry, backoff, rate limiting, and timeout. */
 export class Client {
   readonly maxRetries: number;
@@ -66,7 +77,6 @@ export class Client {
   readonly timeout: number;
   readonly userAgent: string;
   private readonly rateLimiter: RateLimiter | null;
-  private readonly fetch: $Fetch;
 
   constructor(options: ClientOptions = {}) {
     this.maxRetries = options.maxRetries ?? DEFAULT_MAX_RETRIES;
@@ -74,15 +84,6 @@ export class Client {
     this.timeout = options.timeout ?? DEFAULT_TIMEOUT;
     this.userAgent = options.userAgent ?? DEFAULT_USER_AGENT;
     this.rateLimiter = options.rateLimiter ?? null;
-
-    this.fetch = ofetch.create({
-      retry: this.maxRetries,
-      retryStatusCodes: [408, 409, 425, 429, 500, 502, 503, 504],
-      headers: {
-        Accept: "application/json",
-        "User-Agent": this.userAgent,
-      },
-    });
   }
 
   /**
@@ -102,70 +103,120 @@ export class Client {
       await this.rateLimiter.wait(signal);
     }
 
+    for (let attempt = 0; ; attempt++) {
+      const outcome = await this.attempt(url, signal, headers);
+      if (outcome.ok) return outcome.data as T;
+      if (!this.canRetry(outcome, attempt, signal)) throw outcome.error;
+
+      await abortableDelay(this.retryDelay(attempt, url, outcome), signal);
+      if (signal?.aborted) throw new HTTPError(0, url, "");
+    }
+  }
+
+  /**
+   * One request under a fresh timeout. Failures come back as data, so the loop picks what's next.
+   *
+   * @param url - Request URL.
+   * @param signal - Optional cancellation signal.
+   * @param headers - Optional request headers.
+   * @returns {Promise<Attempt>} The decoded body or the failure.
+   */
+  private async attempt(
+    url: string,
+    signal?: AbortSignal,
+    headers?: Readonly<Record<string, string>>,
+  ): Promise<Attempt> {
+    const init = { headers: this.requestHeaders(headers), signal: this.attemptSignal(signal) };
+    let status: number;
+    let retryAfter: string | null;
+    let text: string | undefined;
     try {
-      return await this.fetch<T>(url, { headers, ...this.retryControl(signal) });
+      const response = await fetch(url, init);
+      ({ status } = response);
+      retryAfter = response.headers.get("Retry-After");
+      text = EMPTY_STATUS_CODES.has(status) ? undefined : await response.text();
+    } catch {
+      return { ok: false, error: new HTTPError(0, url, ""), retryable: !signal?.aborted };
+    }
+
+    if (status < 400 || status >= 600) return { ok: true, data: parseBody(text) };
+
+    const error =
+      status === 429
+        ? new RateLimitError(parseRetryAfter(retryAfter))
+        : new HTTPError(status, url, text ?? "");
+    return { ok: false, error, retryable: RETRY_STATUS_CODES.has(status), status, retryAfter };
+  }
+
+  private canRetry(
+    failure: Readonly<{ retryable: boolean }>,
+    attempt: number,
+    signal?: AbortSignal,
+  ): boolean {
+    return failure.retryable && attempt < this.maxRetries && !signal?.aborted;
+  }
+
+  /**
+   * Exponential backoff with up to 10% jitter, stretched to a longer Retry-After.
+   *
+   * @param attempt - Zero-based index of the attempt that just failed.
+   * @param url - Request URL, for the error when Retry-After is unschedulable.
+   * @param failure - The failed attempt.
+   * @returns {number} Milliseconds to wait before the next attempt.
+   */
+  private retryDelay(
+    attempt: number,
+    url: string,
+    failure: Readonly<{ status?: number; retryAfter?: string | null }>,
+  ): number {
+    const delay = this.baseDelay * Math.pow(2, attempt - 1);
+    const jitteredDelay = delay + delay * Math.random() * 0.1;
+    try {
+      return retryDelayFor(failure.retryAfter, jitteredDelay);
     } catch (error) {
-      if (error instanceof FetchError) {
-        if (error.statusCode === 429) {
-          throw new RateLimitError(parseRetryAfter(error.response?.headers.get("Retry-After")));
-        }
-
-        const body = typeof error.data === "string" ? error.data : JSON.stringify(error.data ?? "");
-
-        throw new HTTPError(error.statusCode ?? 0, url, body);
+      if (error instanceof RateLimitError && failure.status !== 429) {
+        throw new HTTPError(failure.status ?? 0, url, "");
       }
       throw error;
     }
   }
 
   /**
-   * ofetch drops its timeout once a signal is supplied, sleeps through backoff with a plain
-   * timer and retries after an abort, so the request owns all three here.
+   * Default headers, each replaced by a caller header of the same name in any letter case.
    *
-   * @param signal - Optional cancellation signal.
-   * @returns {FetchOptions} The request hooks that own timeout, backoff and cancellation.
+   * @param overrides - Optional request headers.
+   * @returns {Headers} The headers for one request.
    */
-  private retryControl(
-    signal?: AbortSignal,
-  ): Pick<FetchOptions, "signal" | "retryDelay" | "onRequest" | "onRequestError"> {
-    let pendingDelay = 0;
-    return {
-      signal,
-      retryDelay: (context) => {
-        const remaining = retryCount(context.options.retry);
-        const attempt = this.maxRetries - remaining;
-        const delay = this.baseDelay * Math.pow(2, attempt - 1);
-        const jitteredDelay = delay + delay * Math.random() * 0.1;
-        const retryAfter = context.response?.headers.get("Retry-After");
-        try {
-          pendingDelay = retryDelayFor(retryAfter, jitteredDelay);
-        } catch (error) {
-          if (error instanceof RateLimitError && context.response?.status !== 429) {
-            const requestURL =
-              typeof context.request === "string" ? context.request : context.request.url;
-            throw new HTTPError(context.response?.status ?? 0, requestURL, "");
-          }
-          throw error;
-        }
-        return 0;
-      },
-      onRequest: async ({ options }) => {
-        if (pendingDelay > 0) {
-          await abortableDelay(pendingDelay, signal);
-          pendingDelay = 0;
-        }
-        options.signal = this.attemptSignal(signal);
-      },
-      onRequestError: ({ options }) => {
-        if (signal?.aborted) options.retry = false;
-      },
-    };
+  private requestHeaders(overrides?: Readonly<Record<string, string>>): Headers {
+    const headers = new Headers({ Accept: "application/json", "User-Agent": this.userAgent });
+    for (const [name, value] of Object.entries(overrides ?? {})) headers.set(name, value);
+    return headers;
   }
 
   private attemptSignal(signal?: AbortSignal): AbortSignal | undefined {
     const signals = [signal, this.timeout > 0 ? AbortSignal.timeout(this.timeout) : undefined];
     const active = signals.filter((candidate) => candidate !== undefined);
     return active.length > 0 ? AbortSignal.any(active) : undefined;
+  }
+}
+
+/**
+ * JSON when it parses, raw text when it doesn't, and no prototype keys smuggled in by a registry.
+ *
+ * @param text - Response body, or `undefined` for a bodiless status.
+ * @returns {unknown} The decoded body.
+ */
+function parseBody(text: string | undefined): unknown {
+  if (text === undefined) return undefined;
+  try {
+    return JSON.parse(text, (key, value: unknown) =>
+      key === "__proto__" ||
+      (key === "constructor" && typeof value === "object" && value !== null && "prototype" in value)
+        ? undefined
+        : value,
+    );
+  } catch {
+    return text;
   }
 }
 
