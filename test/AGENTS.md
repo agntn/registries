@@ -22,6 +22,7 @@ test/
 | Cache behavior tests            | `test/unit/lockfile.test.ts`, `test/unit/cached-registry.test.ts` | Freshness, TTL, integrity, wrapper behavior  |
 | Normalization tests             | `test/unit/license.test.ts`, `test/unit/repository.test.ts`       | Canonical output normalization               |
 | Error-type expectations         | `test/unit/errors.test.ts`                                        | Custom error classes                         |
+| Docs rate limit subject         | `test/unit/docs-rate-limit.test.ts`                               | Loads `docs/` with the root tsconfig         |
 | Live smoke tests                | `test/e2e/smoke.test.ts`                                          | Network-sensitive ecosystem checks           |
 
 ## CONVENTIONS

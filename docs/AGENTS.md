@@ -20,6 +20,7 @@ docs/
 ├── app/pages/lookup.vue           # explorer, own route outside the docs layout
 ├── server/api/                    # package, versions, dependencies, maintainers, ecosystems over the library
 ├── server/utils/query.ts          # parameter caps, cache, rate limit, error mapping
+├── server/utils/client-key.ts     # the rate limit subject: IPv4 by address, IPv6 by its /64
 ├── content/index.md               # landing
 ├── content/1.guide/               # getting started, purl, lookups, cache, cli, agents, custom, explorer
 └── content/2.registries/          # one page per ecosystem
@@ -35,7 +36,7 @@ pnpm deploy           # build, then wrangler deploy to registries.agntn.dev
 pnpm generate         # static output only; the /api routes need the worker
 ```
 
-Deployment: Nitro preset `cloudflare_module`. Nuxt Content needs a D1 binding named `DB` and the response cache a KV binding named `CACHE`; `wrangler.jsonc` carries both and the `NUXT_SITE_URL` var, Nitro merges it into the generated `.output/server/wrangler.json`. Create them once with `wrangler d1 create agntn-registries` and `wrangler kv namespace create CACHE` and put the ids in `wrangler.jsonc`; the ids there are placeholders until then.
+Deployment: Nitro preset `cloudflare_module`. Nuxt Content needs a D1 binding named `DB`, the response cache a KV binding named `CACHE` and the rate limit a Workers Rate Limiting binding named `REGISTRY_LIMIT`; `wrangler.jsonc` carries all three and the `NUXT_SITE_URL` var, Nitro merges it into the generated `.output/server/wrangler.json`. Create them once with `wrangler d1 create agntn-registries` and `wrangler kv namespace create CACHE` and put the ids in `wrangler.jsonc`; the ids there are placeholders until then.
 
 `@agntn/registries` and `@agntn/registries/registries` are aliases in `nuxt.config.ts` for `../src/index.ts` and `../src/registries/index.ts`. Nitro bundles the checkout's sources into the worker, so `dist/` and the root `node_modules` are never touched; Workers Builds installs `docs/` and nothing else. The subgraph under `src/index.ts` imports `unstorage` from npm, so it is a dependency of `docs/package.json`: a bare import in `../src` resolves upwards from the importer and reaches `docs/node_modules` only as Nitro's fallback. A new npm import that `src/index.ts` can reach needs an entry there or the deploy breaks. The CLI, MCP and tool entries stay out of the alias.
 
@@ -47,7 +48,8 @@ Resolution traps, both caused by the repo root being a pnpm workspace:
 ## Live data
 
 - `server/api/*.get.ts` resolve the PURL with `createFromPURL` and call `fetchPackage`, `fetchVersions`, `fetchDependencies` and `fetchMaintainers` on the adapter, with a `Client` of one retry and a twenty second timeout. The page shows what a script would get.
-- Every route goes through `cachedAnswer` in `server/utils/query.ts`: exact parameters as the key, the library's `DEFAULT_TTL` for the data type, nothing for a thrown failure. Do not bypass it: the registries behind it are public services. A cache miss also counts against `RATE_LIMIT` (30 new queries a minute per address, 429 past it); cache hits are free.
+- Every route goes through `cachedAnswer` in `server/utils/query.ts`: exact parameters as the key, the library's `DEFAULT_TTL` for the data type, nothing for a thrown failure. Do not bypass it: the registries behind it are public services. A cache miss also counts against `RATE_LIMIT` (30 new queries a minute per address, 429 past it); cache hits are free. KV drops an entry itself at four times its TTL, sixty seconds at least, so an old parameter set does not stay in `CACHE` for good.
+- In production the binding `REGISTRY_LIMIT` (`ratelimits` in `wrangler.jsonc`, namespace `3305`, the same 30 a minute) keeps that count, keyed by `CF-Connecting-IP`, an IPv6 client by its /64 (`rateLimitSubject`), so parallel misses cannot read one stale total and `X-Forwarded-For`, which the caller writes, never picks the key. Change the number in both places. `nuxt dev` has no binding and counts per isolate in memory. The namespace id is unique per account: agntn/urls holds `3301`, explorers `3302`, archives `3303`.
 - Library errors are mapped in `toHttpError`: `NotFoundError` 404, `InvalidPURLError` and `UnknownEcosystemError` 400, `RateLimitError` 429, `HTTPError` 502.
 - `app/utils/landing-fixtures.ts` holds answers recorded through the library so the landing paints before the worker answers. Regenerate it with a script over `dist/index.mjs` (`createFromPURL` plus the four lookups for the six example PURLs); never edit the recorded values by hand.
 - In production the cache lives in the KV binding `CACHE` (`$production.nitro.storage.cache`); locally it is in memory.
