@@ -2,6 +2,18 @@
 import { defineCommand, runMain } from "citty";
 import { version } from "./version.ts";
 
+/**
+ * A reader that hangs up early (`| head -1`) ends the command, not crashes it; other errors throw.
+ * @param error - The error the stream emitted.
+ */
+function exitOnClosedPipe(error: Readonly<NodeJS.ErrnoException>): void {
+  if (error.code !== "EPIPE") throw error;
+  process.exit();
+}
+
+process.stdout.on("error", exitOnClosedPipe);
+process.stderr.on("error", exitOnClosedPipe);
+
 const main = defineCommand({
   meta: {
     name: "registries",
