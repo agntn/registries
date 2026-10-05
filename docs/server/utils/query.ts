@@ -11,6 +11,7 @@ import {
   parsePURL,
   type Registry,
 } from "@agntn/registries";
+import { rateLimitSubject } from "./client-key";
 
 type Query = Record<string, unknown>;
 
@@ -121,22 +122,44 @@ export function markPublic(event: H3Event, seconds: number): void {
   setResponseHeader(event, "Cache-Control", `public, max-age=${seconds}, stale-while-revalidate=${seconds * 4}`);
 }
 
-/** Uncached registry queries one client may start per minute; cache hits are free. */
+/** Uncached registry queries one client may start per minute; `ratelimits` in wrangler.jsonc carries the same number. */
 export const RATE_LIMIT = 30;
+
+/** The Workers Rate Limiting binding: a per-location count that catches up within moments, a ceiling rather than a ledger. */
+interface RateLimiter {
+  limit(options: { key: string }): Promise<{ success: boolean }>;
+}
+
+/** Fallback for `nuxt dev` without the binding: one counter per isolate, raised synchronously. */
+const localCounts = new Map<string, number>();
+
+/** The address Cloudflare saw. X-Forwarded-For stays out: its first entry is whatever the client sent. */
+function clientAddress(event: H3Event): string {
+  return getRequestHeader(event, "cf-connecting-ip") ?? getRequestIP(event) ?? "unknown";
+}
 
 /** Counts uncached queries per client and minute; cache hits are free, so a warm demo never trips it. */
 export async function assertRateLimit(event: H3Event): Promise<void> {
-  const ip = getRequestIP(event, { xForwardedFor: true }) ?? getRequestHeader(event, "cf-connecting-ip") ?? "unknown";
-  const minute = Math.floor(Date.now() / 60_000);
-  const key = `docs:rate:${hash(ip)}:${minute}`;
-  const storage = useStorage("cache");
-  const count = Number((await storage.getItem<number>(key).catch(() => 0)) ?? 0) + 1;
-  await storage.setItem(key, count, { ttl: 120 }).catch(() => undefined);
-  if (count > RATE_LIMIT) {
-    setResponseHeader(event, "Retry-After", String(60 - (Math.floor(Date.now() / 1000) % 60)));
+  const key = hash(rateLimitSubject(clientAddress(event)));
+  const limiter = (event.context.cloudflare?.env as { REGISTRY_LIMIT?: RateLimiter } | undefined)?.REGISTRY_LIMIT;
+  let allowed: boolean;
+  if (limiter) {
+    allowed = (await limiter.limit({ key })).success;
+  } else {
+    const minute = Math.floor(Date.now() / 60_000);
+    for (const slot of localCounts.keys()) {
+      if (!slot.endsWith(`:${minute}`)) localCounts.delete(slot);
+    }
+    const slot = `${key}:${minute}`;
+    const count = (localCounts.get(slot) ?? 0) + 1;
+    localCounts.set(slot, count);
+    allowed = count <= RATE_LIMIT;
+  }
+  if (!allowed) {
+    setResponseHeader(event, "Retry-After", 60);
     throw createError({
       statusCode: 429,
-      statusMessage: `More than ${RATE_LIMIT} new registry queries in a minute from one address; cached answers are not counted. Wait a moment.`,
+      statusMessage: `More than ${RATE_LIMIT} new registry queries in a minute from one address, or one /64 on IPv6; cached answers are not counted. Wait a moment.`,
     });
   }
 }
@@ -163,7 +186,10 @@ export async function cachedAnswer<T>(
   }
   await assertRateLimit(event);
   const value = await produce();
-  await storage.setItem(key, { value, expires: Date.now() + ttl * 1000 }).catch(() => undefined);
+  /** KV expires the entry itself a while after the logical TTL; its floor is sixty seconds. */
+  await storage
+    .setItem(key, { value, expires: Date.now() + ttl * 1000 }, { ttl: Math.max(60, ttl * 4) })
+    .catch(() => undefined);
   markPublic(event, ttl);
   return value;
 }
