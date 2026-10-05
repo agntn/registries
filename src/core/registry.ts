@@ -42,8 +42,30 @@ let entries: Map<string, RegistryEntry> | undefined;
  * @returns {Map<string, RegistryEntry>} The seeded table.
  */
 function table(): Map<string, RegistryEntry> {
-  entries ??= new Map(builtins.map((entry): [string, RegistryEntry] => [entry.ecosystem, entry]));
+  entries ??= new Map(
+    builtins.map((entry): [string, RegistryEntry] => [
+      entry.ecosystem,
+      { ...entry, load: shared(entry.load) },
+    ]),
+  );
   return entries;
+}
+
+/**
+ * One import for every caller: under jiti (Pi, OMP) an overlapping `import()` sees no exports.
+ *
+ * @param load - Loader to run on the first call and again after a failure.
+ * @returns {() => Promise<T>} Loader answering every call from the same pending promise.
+ */
+function shared<T>(load: () => Promise<T>): () => Promise<T> {
+  let pending: Promise<T> | undefined;
+  return () => {
+    pending ??= load().catch((error: unknown) => {
+      pending = undefined;
+      throw error;
+    });
+    return pending;
+  };
 }
 
 /**
@@ -67,8 +89,8 @@ export function register(
 /**
  * Create an adapter for a registered ecosystem.
  *
- * A built-in adapter's module is imported here, on the first call for its key; the module map
- * shares one import between parallel callers and answers later calls from cache.
+ * A built-in adapter's module is imported here, on the first call for its key; parallel callers
+ * share that import and later calls reuse it. A failed import is retried on the next call.
  *
  * @param ecosystem - Ecosystem key.
  * @param baseURL - Optional registry API URL override.
