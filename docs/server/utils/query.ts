@@ -125,7 +125,7 @@ export function markPublic(event: H3Event, seconds: number): void {
 /** Uncached registry queries one client may start per minute; `ratelimits` in wrangler.jsonc carries the same number. */
 export const RATE_LIMIT = 30;
 
-/** The Workers Rate Limiting binding: Cloudflare keeps the count, so parallel misses cannot race past it. */
+/** The Workers Rate Limiting binding: a per-location count that catches up within moments, a ceiling rather than a ledger. */
 interface RateLimiter {
   limit(options: { key: string }): Promise<{ success: boolean }>;
 }
