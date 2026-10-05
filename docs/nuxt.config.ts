@@ -11,6 +11,8 @@ export default defineNuxtConfig({
   /** The subpath alias comes first: a plain prefix match on the package name would swallow it. */
   alias: {
     "@agntn/registries/registries": `${librarySource}registries/index.ts`,
+    /** The tool listings and the executor `registries mcp` serves, for the MCP server at /mcp. */
+    "@agntn/registries/mcp": `${librarySource}mcp.ts`,
     "@agntn/registries": `${librarySource}index.ts`,
   },
   devtools: { enabled: true },
@@ -21,6 +23,20 @@ export default defineNuxtConfig({
   },
   llms: {
     domain: "https://registries.agntn.dev",
+    sections: [
+      {
+        title: "MCP Server",
+        description: "The tools of `registries mcp` and the page tools of this site over Streamable HTTP.",
+        links: [
+          {
+            title: "MCP endpoint",
+            href: "https://registries.agntn.dev/mcp",
+            description:
+              "Add it to any MCP client as an HTTP server, for example `claude mcp add --transport http registries https://registries.agntn.dev/mcp`.",
+          },
+        ],
+      },
+    ],
   },
   /** Docus pages define their own OG images; the alt text is the one thing they leave unset. */
   ogImage: {
@@ -99,12 +115,18 @@ export default defineNuxtConfig({
       ],
     },
   },
-  /** Docus ships an MCP endpoint that needs the Cloudflare Agents SDK on Workers. The docs do not need it. */
-  mcp: {
-    enabled: false,
-  },
   nitro: {
     preset: "cloudflare_module",
+    /** One MCP SDK copy, or `agents` fails the toolkit's server on its `instanceof` check. */
+    alias: {
+      "@modelcontextprotocol/sdk": fileURLToPath(
+        new URL("./node_modules/@modelcontextprotocol/sdk/dist/esm", import.meta.url),
+      ),
+    },
+    experimental: {
+      /** An MCP tool gets no event, so the rate limit reads it through `useEvent()`. */
+      asyncContext: true,
+    },
     compatibilityDate: "2026-09-03",
     prerender: {
       crawlLinks: true,

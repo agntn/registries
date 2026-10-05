@@ -77,12 +77,16 @@ export interface Lookup {
   registry: Registry;
 }
 
-/** Resolves a PURL into an adapter with a client that retries once; the browser is waiting. */
+/** Every worker query goes through this client: one retry, someone is waiting on the answer. */
+export function siteClient(): Client {
+  return new Client({ maxRetries: 1, timeout: LIMITS.timeout, userAgent: "registries.agntn.dev (docs)" });
+}
+
+/** Resolves a PURL into an adapter with the site's client. */
 export async function resolveLookup(purl: string): Promise<Lookup> {
   try {
     const parsed = parsePURL(purl);
-    const client = new Client({ maxRetries: 1, timeout: LIMITS.timeout, userAgent: "registries.agntn.dev (docs)" });
-    const [registry, name, version] = await createFromPURL(purl, client);
+    const [registry, name, version] = await createFromPURL(purl, siteClient());
     return { purl, ecosystem: parsed.type, name, version, registry };
   } catch (error) {
     return toHttpError(error);
@@ -138,24 +142,29 @@ function clientAddress(event: H3Event): string {
   return getRequestHeader(event, "cf-connecting-ip") ?? getRequestIP(event) ?? "unknown";
 }
 
-/** Counts uncached queries per client and minute; cache hits are free, so a warm demo never trips it. */
-export async function assertRateLimit(event: H3Event): Promise<void> {
+/** Spends `count` queries from the client's allowance, false once this minute's is gone. */
+export async function admitQueries(event: H3Event, count = 1): Promise<boolean> {
   const key = hash(rateLimitSubject(clientAddress(event)));
   const limiter = (event.context.cloudflare?.env as { REGISTRY_LIMIT?: RateLimiter } | undefined)?.REGISTRY_LIMIT;
-  let allowed: boolean;
   if (limiter) {
-    allowed = (await limiter.limit({ key })).success;
-  } else {
-    const minute = Math.floor(Date.now() / 60_000);
-    for (const slot of localCounts.keys()) {
-      if (!slot.endsWith(`:${minute}`)) localCounts.delete(slot);
+    for (let spent = 0; spent < count; spent++) {
+      if (!(await limiter.limit({ key })).success) return false;
     }
-    const slot = `${key}:${minute}`;
-    const count = (localCounts.get(slot) ?? 0) + 1;
-    localCounts.set(slot, count);
-    allowed = count <= RATE_LIMIT;
+    return true;
   }
-  if (!allowed) {
+  const minute = Math.floor(Date.now() / 60_000);
+  for (const slot of localCounts.keys()) {
+    if (!slot.endsWith(`:${minute}`)) localCounts.delete(slot);
+  }
+  const slot = `${key}:${minute}`;
+  const total = (localCounts.get(slot) ?? 0) + count;
+  localCounts.set(slot, total);
+  return total <= RATE_LIMIT;
+}
+
+/** Counts uncached queries per client and minute; cache hits are free, so a warm demo never trips it. */
+export async function assertRateLimit(event: H3Event): Promise<void> {
+  if (!(await admitQueries(event))) {
     setResponseHeader(event, "Retry-After", 60);
     throw createError({
       statusCode: 429,

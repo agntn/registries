@@ -1,8 +1,10 @@
+import { readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
-import { createMcpServer } from "../../src/mcp.ts";
+import { Client as RegistryClient } from "../../src/core/client.ts";
+import { callTool, createMcpServer, toolListings } from "../../src/mcp.ts";
 
 const openConnections: Array<{ close(): Promise<void> }> = [];
 
@@ -84,5 +86,46 @@ describe("Registries MCP server", () => {
         text: "Unknown registries tool: bad tool",
       },
     ]);
+  });
+
+  it("should answer through toolListings and callTool as tools/list and tools/call do", async () => {
+    const client = await connectTestClient();
+    expect((await client.listTools()).tools).toEqual(toolListings);
+    const calls: Array<[string, Record<string, unknown>]> = [
+      ["registries_ecosystems", {}],
+      ["registries_package", {}],
+      ["registries_package", { purl: "pkg:npm/lodash", extra: true }],
+      ["registries_package", { purl: "pkg:npm/lodash?repository_url=https://evil.test" }],
+      ["registries_bulk_packages", { purls: [] }],
+      ["registries_nope", {}],
+    ];
+    for (const [name, args] of calls) {
+      expect(await callTool(name, args)).toEqual(await client.callTool({ name, arguments: args }));
+    }
+  });
+
+  it("should have one docs /mcp tool file per listed tool", () => {
+    const files = readdirSync(new URL("../../docs/server/mcp/tools/", import.meta.url));
+    expect(files.toSorted()).toEqual(
+      toolListings.map((tool) => `${tool.name.replaceAll("_", "-")}.ts`).toSorted(),
+    );
+  });
+
+  it("should send the registry requests through the client the caller passes", async () => {
+    const fetch = vi.fn<typeof globalThis.fetch>(async () => new Response("", { status: 503 }));
+    vi.stubGlobal("fetch", fetch);
+    try {
+      const result = await callTool(
+        "registries_package",
+        { purl: "pkg:npm/defu" },
+        undefined,
+        new RegistryClient({ maxRetries: 0, userAgent: "probe" }),
+      );
+      expect(result.isError).toBe(true);
+      expect(fetch).toHaveBeenCalledOnce();
+      expect(new Headers(fetch.mock.calls[0]?.[1]?.headers).get("User-Agent")).toBe("probe");
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });

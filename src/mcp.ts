@@ -7,6 +7,7 @@ import {
   type ToolAnnotations,
 } from "@modelcontextprotocol/sdk/types.js";
 import { Type, type Static, type TSchema } from "typebox";
+import type { Client } from "./core/client.ts";
 import {
   bulkPackagesOperation,
   dependenciesOperation,
@@ -56,7 +57,11 @@ interface RegistryTool<S extends TSchema> {
   readonly description: string;
   readonly inputSchema: S;
   readonly annotations: ToolAnnotations;
-  execute(params: Readonly<Static<S>>, signal?: AbortSignal): Promise<ToolResult<unknown>>;
+  execute(
+    params: Readonly<Static<S>>,
+    signal?: AbortSignal,
+    client?: Client,
+  ): Promise<ToolResult<unknown>>;
 }
 
 function defineTool<S extends TSchema>(tool: Readonly<RegistryTool<S>>): RegistryTool<S> {
@@ -147,38 +152,57 @@ function toMcpSchema(schema: TSchema): Tool["inputSchema"] {
   return schema as unknown as Tool["inputSchema"];
 }
 
+/** The `tools/list` entries shared by `registries mcp` and the MCP server of the docs site. */
+export const toolListings: readonly Tool[] = tools.map((tool): Tool => ({
+  name: tool.name,
+  title: tool.title,
+  description: tool.description,
+  inputSchema: toMcpSchema(tool.inputSchema),
+  annotations: tool.annotations,
+}));
+
+const toolsByName = new Map<string, AnyRegistryTool>(tools.map((tool) => [tool.name, tool]));
+
+/**
+ * Runs one tool the way `tools/call` of `registries mcp` does, errors as results, never as a throw.
+ *
+ * @param {string} name - The tool's name, such as `registries_package`.
+ * @param {Readonly<Record<string, unknown>>} args - The arguments the client sent.
+ * @param {AbortSignal} [signal] - The request's signal, which stops the registry requests.
+ * @param {Client} [client] - HTTP client for the registry requests, the default one when absent.
+ * @returns {Promise<CallToolResult>} The tool's text, or the sanitized error.
+ */
+export async function callTool(
+  name: string,
+  args: Readonly<Record<string, unknown>>,
+  signal?: AbortSignal,
+  client?: Client,
+): Promise<CallToolResult> {
+  const tool = toolsByName.get(name);
+  if (!tool) return errorResult(`Unknown registries tool: ${name}`);
+
+  const { Value } = await import("typebox/value");
+  if (!Value.Check(tool.inputSchema, args)) {
+    return errorResult(`Invalid arguments for ${tool.name}`);
+  }
+
+  try {
+    /** SAFETY: Value.Check validated args against the selected tool's schema. */
+    const validatedArgs = args as never;
+    return toCallToolResult(await tool.execute(validatedArgs, signal, client));
+  } catch (error) {
+    return errorResult(`${tool.name} failed: ${errorMessage(error)}`);
+  }
+}
+
 export function createMcpServer(): Server {
-  const toolsByName = new Map<string, AnyRegistryTool>(tools.map((tool) => [tool.name, tool]));
   const server = new Server({ name: "registries", version }, { capabilities: { tools: {} } });
 
-  server.setRequestHandler(ListToolsRequestSchema, () => ({
-    tools: tools.map((tool): Tool => ({
-      name: tool.name,
-      title: tool.title,
-      description: tool.description,
-      inputSchema: toMcpSchema(tool.inputSchema),
-      annotations: tool.annotations,
-    })),
-  }));
+  server.setRequestHandler(ListToolsRequestSchema, () => ({ tools: [...toolListings] }));
 
-  server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
-    const tool = toolsByName.get(request.params.name);
-    if (!tool) return errorResult(`Unknown registries tool: ${request.params.name}`);
-
-    const args = request.params.arguments ?? {};
-    const { Value } = await import("typebox/value");
-    if (!Value.Check(tool.inputSchema, args)) {
-      return errorResult(`Invalid arguments for ${tool.name}`);
-    }
-
-    try {
-      /** SAFETY: Value.Check validated args against the selected tool's schema. */
-      const validatedArgs = args as never;
-      return toCallToolResult(await tool.execute(validatedArgs, extra.signal));
-    } catch (error) {
-      return errorResult(`${tool.name} failed: ${errorMessage(error)}`);
-    }
-  });
+  server.setRequestHandler(CallToolRequestSchema, (request, extra) =>
+    callTool(request.params.name, request.params.arguments ?? {}, extra.signal),
+  );
 
   return server;
 }

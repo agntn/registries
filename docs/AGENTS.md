@@ -7,7 +7,7 @@ Docus site for `@agntn/registries`. Markdown lives in `content/`. The lookup exp
 ```
 docs/
 ├── DESIGN.md                      # instruments this site owns, their anatomy, departures from the family rules
-├── nuxt.config.ts                 # extends: ['docus'], cloudflare_module preset (Workers), @agntn/registries aliased to ../src
+├── nuxt.config.ts                 # extends: ['docus'], cloudflare_module preset (Workers), @agntn/registries and its /mcp aliased to ../src
 ├── shiki-theme.ts                 # code blocks in the palette of the tok-* classes, every colour a --shiki-token-* variable
 ├── app/app.config.ts              # title, github, the Nuxt UI variants that carry the family look
 ├── app/app.css                    # tokens, the shared `console-*` and `hero-*` grammar, `registries-*` classes
@@ -19,7 +19,10 @@ docs/
 ├── app/utils/                     # ecosystems table, formatting, recorded landing samples, roster classes, tokenizers
 ├── app/pages/lookup.vue           # explorer, own route outside the docs layout
 ├── server/api/                    # package, versions, dependencies, maintainers, ecosystems over the library
+├── server/mcp/index.ts            # the Docus MCP handler at /mcp, named and versioned like `registries mcp`
+├── server/mcp/tools/              # one file per registry tool, each `registriesMcpTool("<name>")`
 ├── server/utils/query.ts          # parameter caps, cache, rate limit, error mapping
+├── server/utils/registries-mcp.ts # a tool from `@agntn/registries/mcp`: its listing, the worker's limit, then `callTool`
 ├── server/utils/client-key.ts     # the rate limit subject: IPv4 by address, IPv6 by its /64
 ├── content/index.md               # landing
 ├── content/1.guide/               # getting started, purl, lookups, cache, cli, agents, custom, explorer
@@ -38,7 +41,7 @@ pnpm generate         # static output only; the /api routes need the worker
 
 Deployment: Nitro preset `cloudflare_module`. Nuxt Content needs a D1 binding named `DB`, the response cache a KV binding named `CACHE` and the rate limit a Workers Rate Limiting binding named `REGISTRY_LIMIT`; `wrangler.jsonc` carries all three and the `NUXT_SITE_URL` var, Nitro merges it into the generated `.output/server/wrangler.json`. Create them once with `wrangler d1 create agntn-registries` and `wrangler kv namespace create CACHE` and put the ids in `wrangler.jsonc`; the ids there are placeholders until then.
 
-`@agntn/registries` and `@agntn/registries/registries` are aliases in `nuxt.config.ts` for `../src/index.ts` and `../src/registries/index.ts`. Nitro bundles the checkout's sources into the worker, so `dist/` and the root `node_modules` are never touched; Workers Builds installs `docs/` and nothing else. The subgraph under `src/index.ts` imports `unstorage` from npm, so it is a dependency of `docs/package.json`: a bare import in `../src` resolves upwards from the importer and reaches `docs/node_modules` only as Nitro's fallback. A new npm import that `src/index.ts` can reach needs an entry there or the deploy breaks. The CLI, MCP and tool entries stay out of the alias.
+`@agntn/registries` and `@agntn/registries/registries` are aliases in `nuxt.config.ts` for `../src/index.ts` and `../src/registries/index.ts`. Nitro bundles the checkout's sources into the worker, so `dist/` and the root `node_modules` are never touched; Workers Builds installs `docs/` and nothing else. The subgraph under `src/index.ts` imports `unstorage` from npm, so it is a dependency of `docs/package.json`: a bare import in `../src` resolves upwards from the importer and reaches `docs/node_modules` only as Nitro's fallback. A new npm import that `src/index.ts` or `src/mcp.ts` can reach needs an entry there or the deploy breaks. `@agntn/registries/mcp` points at `../src/mcp.ts` for the MCP server; the CLI stays out of the alias.
 
 Resolution traps, both caused by the repo root being a pnpm workspace:
 
@@ -48,12 +51,20 @@ Resolution traps, both caused by the repo root being a pnpm workspace:
 ## Live data
 
 - `server/api/*.get.ts` resolve the PURL with `createFromPURL` and call `fetchPackage`, `fetchVersions`, `fetchDependencies` and `fetchMaintainers` on the adapter, with a `Client` of one retry and a twenty second timeout. The page shows what a script would get.
-- Every route goes through `cachedAnswer` in `server/utils/query.ts`: exact parameters as the key, the library's `DEFAULT_TTL` for the data type, nothing for a thrown failure. Do not bypass it: the registries behind it are public services. A cache miss also counts against `RATE_LIMIT` (30 new queries a minute per address, 429 past it); cache hits are free. KV drops an entry itself at four times its TTL, sixty seconds at least, so an old parameter set does not stay in `CACHE` for good.
+- Every `server/api` route goes through `cachedAnswer` in `server/utils/query.ts`: exact parameters as the key, the library's `DEFAULT_TTL` for the data type, nothing for a thrown failure. Do not bypass it: the registries behind it are public services. A cache miss also counts against `RATE_LIMIT` (30 new queries a minute per address, 429 past it); cache hits are free. KV drops an entry itself at four times its TTL, sixty seconds at least, so an old parameter set does not stay in `CACHE` for good.
 - In production the binding `REGISTRY_LIMIT` (`ratelimits` in `wrangler.jsonc`, namespace `3305`, the same 30 a minute) keeps that count, keyed by `CF-Connecting-IP`, an IPv6 client by its /64 (`rateLimitSubject`), so `X-Forwarded-For`, which the caller writes, never picks the key. Cloudflare counts per location and eventually consistent: a burst can slip a few misses past thirty before the count catches up, which is far tighter than the KV read and write it replaced, but no hard ceiling. A hard one needs a Durable Object. Change the number in both places. `nuxt dev` has no binding and counts per isolate in memory. The namespace id is unique per account: agntn/urls holds `3301`, explorers `3302`, archives `3303`.
 - Library errors are mapped in `toHttpError`: `NotFoundError` 404, `InvalidPURLError` and `UnknownEcosystemError` 400, `RateLimitError` 429, `HTTPError` 502.
 - `app/utils/landing-fixtures.ts` holds answers recorded through the library so the landing paints before the worker answers. Regenerate it with a script over `dist/index.mjs` (`createFromPURL` plus the four lookups for the six example PURLs); never edit the recorded values by hand.
 - In production the cache lives in the KV binding `CACHE` (`$production.nitro.storage.cache`); locally it is in memory.
 - The explorer reads its deep link from `window.location.search` on mount: a prerendered page hydrates with an empty `route.query` and Nuxt restores it only after mount.
+
+## MCP
+
+`/mcp` is the Docus MCP server (`@nuxtjs/mcp-toolkit`) with the six registry tools beside its own `list-pages` and `get-page`. A file in `server/mcp/tools/` names one tool and nothing else: `registriesMcpTool()` takes the name, prose, annotations and schema from `toolListings` and runs `callTool()`, so a tool changed in `src/mcp.ts` changes here without an edit. A new tool needs one more file here, and `test/unit/mcp.test.ts` fails until it has one. The toolkit wants Zod, so it gets a `z.looseObject({})` whose `toJSONSchema` returns the listing's schema and whose `run` reads a missing `arguments` as `{}`. Any object passes Zod and `callTool()` refuses a bad one with the text `registries mcp` gives. Don't switch to `z.fromJSONSchema()`: Zod quotes an unknown key raw, bidi overrides included.
+
+`/mcp` doesn't go through `cachedAnswer`, so `siteRefusal()` in `server/utils/registries-mcp.ts` stands in for it before `callTool()`. A bulk call with more PURLs than `RATE_LIMIT` is refused without spending anything; any other call spends `admitQueries()` on the same `REGISTRY_LIMIT` binding as the API routes, one query per PURL, none for `registries_ecosystems`. The binding is asked once per query and stops at the first refusal. A tool gets no event, so it reads one through `useEvent()`, which needs `nitro.experimental.asyncContext`. Each refusal is a tool error that names `npx -y @agntn/registries mcp` as the way around it.
+
+`src/mcp.ts` imports `typebox` and `@modelcontextprotocol/sdk`, and the toolkit needs `agents` and `zod` on the `cloudflare_module` preset, so all four are dependencies here. `agents` tells an SDK server apart with `instanceof`, and pnpm installs one SDK copy per `zod` peer it resolves. Two copies fail every request with "createMcpHandler received an unsupported server". `nitro.alias` points every SDK import at the copy in `docs/node_modules`; keep it until both resolve the same one. CI installs the root only, so no root test loads the helper: `test/unit/mcp.test.ts` checks `toolListings` and `callTool()` against the stdio server and the tool files against the listings, and the Zod side is proven with a `/mcp` probe on `nuxt dev` or `wrangler dev`.
 
 ## OG images
 
