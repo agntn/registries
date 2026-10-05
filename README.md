@@ -203,6 +203,14 @@ omp install @agntn/registries
 
 The agent side is six read-only tools, `registries_package` through `registries_ecosystems`, and MCP, Pi and OMP all run the same code behind them. The AI SDK gets `packageTool` from `@agntn/registries/ai`, one tool, five operations: [Agents guide](https://registries.agntn.dev/guide/agents). And whatever a package says about itself was typed by whoever published it, so it's data for the model, not orders.
 
+No Node on the box? The docs site serves the same six tools at [registries.agntn.dev/mcp](https://registries.agntn.dev/guide/agents#mcp-with-or-without-node):
+
+```bash
+claude mcp add --transport http registries https://registries.agntn.dev/mcp
+```
+
+Same answers, one catch. It counts. Thirty registry queries a minute per address, out of the same pot as the explorer.
+
 ## 🚫 What this does not do
 
 Install anything. No tarballs, no `node_modules`, it reads what a registry says and stops there. No semver either, `pkg:npm/lodash@^4` is a package that doesn't exist, give it a real version or take the latest. Vulnerabilities? Different job.

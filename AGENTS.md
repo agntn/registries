@@ -42,7 +42,7 @@ src/
 test/
 ├── unit/            # deterministic, mocked
 └── e2e/             # live HTTP against real registries
-docs/                # Docus site: guide, registry pages, live lookup explorer on Workers (see docs/AGENTS.md)
+docs/                # Docus site: guide, registry pages, live lookup explorer and /mcp on Workers (see docs/AGENTS.md)
 ```
 
 ### Dependency direction
