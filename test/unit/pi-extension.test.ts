@@ -60,6 +60,20 @@ describe("registries Pi extension", () => {
     expect(Value.Check(tool.parameters, { purls, concurrency: 1.5 })).toBe(false);
   });
 
+  it("should take a positive integer or all as the version limit", () => {
+    const tool = registerExtensionTools().get("registries_versions");
+    if (!tool) throw new Error("Tool not registered: registries_versions");
+    const purl = "pkg:npm/lodash";
+
+    expect(Value.Check(tool.parameters, { purl })).toBe(true);
+    expect(Value.Check(tool.parameters, { purl, limit: 1 })).toBe(true);
+    expect(Value.Check(tool.parameters, { purl, limit: "all" })).toBe(true);
+    expect(Value.Check(tool.parameters, { purl, limit: 0 })).toBe(false);
+    expect(Value.Check(tool.parameters, { purl, limit: 1.5 })).toBe(false);
+    expect(Value.Check(tool.parameters, { purl, limit: "ALL" })).toBe(false);
+    expect(Value.Check(tool.parameters, { purl, max: 5 })).toBe(false);
+  });
+
   it("discovers ecosystems without network access", async () => {
     const tool = registerExtensionTools().get("registries_ecosystems");
     if (!tool) throw new Error("Tool not registered: registries_ecosystems");

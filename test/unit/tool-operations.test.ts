@@ -3,6 +3,7 @@ import {
   bulkPackagesOperation,
   dependenciesOperation,
   ecosystemsOperation,
+  fetchRecentVersions,
   maintainersOperation,
   packageOperation,
   versionsOperation,
@@ -33,6 +34,73 @@ describe("registry tool operations", () => {
     expect(text).toBe(JSON.stringify(result.details));
     expect(JSON.parse(text)).toEqual(JSON.parse(JSON.stringify(result.details, null, 2)));
   });
+
+  function npmHistory(count: number): Record<string, unknown> {
+    const numbers = Array.from({ length: count }, (_, index) => `1.${index}.0`);
+    return {
+      name: "example",
+      "dist-tags": { latest: numbers.at(-1) },
+      versions: Object.fromEntries(numbers.map((number) => [number, {}])),
+      time: Object.fromEntries(
+        numbers.map((number, index) => [
+          number,
+          new Date(Date.UTC(2020, 0, index + 1)).toISOString(),
+        ]),
+      ),
+    };
+  }
+
+  it("should hand an agent the 20 newest versions and count the rest", async () => {
+    const client = new Client();
+    vi.spyOn(client, "getJSON").mockResolvedValue(npmHistory(25));
+
+    const { details } = await versionsOperation({ purl: "pkg:npm/example" }, undefined, client);
+
+    expect(details).toMatchObject({ order: "newest first", total: 25, omitted: 5 });
+    expect(details.versions.map(({ number }) => number)).toHaveLength(20);
+    expect(details.versions.map(({ number }) => number).slice(0, 2)).toEqual(["1.24.0", "1.23.0"]);
+    expect(details.versions.map(({ number }) => number).at(-1)).toBe("1.5.0");
+  });
+
+  it("should honour an explicit limit and hand over the whole history for all", async () => {
+    const client = new Client();
+    vi.spyOn(client, "getJSON").mockResolvedValue(npmHistory(25));
+
+    const three = await versionsOperation({ purl: "pkg:npm/example", limit: 3 }, undefined, client);
+    const all = await versionsOperation(
+      { purl: "pkg:npm/example", limit: "all" },
+      undefined,
+      client,
+    );
+
+    expect(three.details.versions.map(({ number }) => number)).toEqual([
+      "1.24.0",
+      "1.23.0",
+      "1.22.0",
+    ]);
+    expect(three.details.omitted).toBe(22);
+    expect(all.details.versions).toHaveLength(25);
+    expect(all.details.omitted).toBe(0);
+    expect(all.details.versions.map(({ number }) => number).at(-1)).toBe("1.0.0");
+  });
+
+  it.each([0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY, "ALL", "20", null])(
+    "should refuse limit %j before a request even when a host skips schema validation",
+    async (limit) => {
+      const client = new Client();
+      const request = vi.spyOn(client, "getJSON").mockResolvedValue(npmHistory(1));
+      /** SAFETY: the value stands in for arguments a host passed through unchecked. */
+      const params = { purl: "pkg:npm/example", limit } as unknown as { purl: string };
+
+      await expect(versionsOperation(params, undefined, client)).rejects.toThrow(
+        'Version limit must be a positive integer or "all"',
+      );
+      await expect(
+        fetchRecentVersions("pkg:npm/example", limit as never, undefined, client),
+      ).rejects.toThrow("Version limit");
+      expect(request).not.toHaveBeenCalled();
+    },
+  );
 
   it("keeps bulk package results complete in compact JSON", async () => {
     const client = new Client();

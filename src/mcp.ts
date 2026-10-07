@@ -10,6 +10,7 @@ import { Type, type Static, type TSchema } from "typebox";
 import type { Client } from "./core/client.ts";
 import {
   bulkPackagesOperation,
+  DEFAULT_VERSIONS_LIMIT,
   dependenciesOperation,
   ecosystemsOperation,
   maintainersOperation,
@@ -29,6 +30,17 @@ const PURL = Type.String({
 });
 
 const PURLParams = Type.Object({ purl: PURL }, { additionalProperties: false });
+const VersionsParams = Type.Object(
+  {
+    purl: PURL,
+    limit: Type.Optional(
+      Type.Union([Type.Integer({ minimum: 1 }), Type.Literal("all")], {
+        description: `How many of the newest versions to return, ${DEFAULT_VERSIONS_LIMIT} when absent. Pass "all" for the whole release history.`,
+      }),
+    ),
+  },
+  { additionalProperties: false },
+);
 const BulkPackagesParams = Type.Object(
   {
     purls: Type.Array(PURL, { minItems: 1, maxItems: MAX_BULK_PACKAGES }),
@@ -80,8 +92,8 @@ const tools = [
   defineTool({
     name: "registries_versions",
     title: "List package versions",
-    description: "List normalized versions for one package URL.",
-    inputSchema: PURLParams,
+    description: `List versions for one package URL, newest first with undated ones last. Returns the ${DEFAULT_VERSIONS_LIMIT} newest unless limit asks for more or "all"; omitted counts the ones left out.`,
+    inputSchema: VersionsParams,
     annotations: REMOTE_READ,
     execute: versionsOperation,
   }),

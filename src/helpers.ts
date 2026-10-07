@@ -38,6 +38,23 @@ export async function fetchVersionsFromPURL(
 }
 
 /**
+ * Newest releases first, undated ones last, cut to `limit`.
+ *
+ * @param versions - Versions in any order; the array is left as it was.
+ * @param limit - How many to keep, `Infinity` for every one.
+ * @returns {Version[]} A sorted copy of at most `limit` versions.
+ */
+export function selectRecentVersions(versions: readonly Version[], limit: number): Version[] {
+  return versions
+    .toSorted((a, b) => {
+      if (a.publishedAt === null) return b.publishedAt === null ? 0 : 1;
+      if (b.publishedAt === null) return -1;
+      return b.publishedAt.getTime() - a.publishedAt.getTime();
+    })
+    .slice(0, limit);
+}
+
+/**
  * Fetch dependencies for a versioned package URL.
  *
  * @param purl - Versioned package URL.

@@ -46,13 +46,14 @@ The tool accepts a discriminated union input with these operations:
 
 Returns: name, description, licenses, repository, latest version, keywords.
 
-### `versions` - List all versions
+### `versions` - List the newest versions
 
 ```json
 { "operation": "versions", "purl": "pkg:cargo/serde" }
+{ "operation": "versions", "purl": "pkg:cargo/serde", "limit": "all" }
 ```
 
-Returns: version numbers, publish dates, integrity hashes, status (yanked/deprecated).
+Returns `{ order, total, omitted, versions }`: the 20 newest releases unless `limit` asks for another number, or `"all"` for the whole history. `omitted` counts the ones left out, so check it before calling a release the oldest. Each version carries its number, publish date, integrity hash and status (yanked/deprecated). Undated ones go last.
 
 ### `dependencies` - List dependencies for a version
 

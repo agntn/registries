@@ -2,19 +2,21 @@ import type { Client } from "./core/client.ts";
 import { InvalidPURLError, PkioError } from "./core/errors.ts";
 import { parsePURL } from "./core/purl.ts";
 import { ecosystems } from "./core/registry.ts";
-import type { Package } from "./core/types.ts";
+import type { Package, Version } from "./core/types.ts";
 import {
   bulkFetchPackages,
   fetchDependenciesFromPURL,
   fetchMaintainersFromPURL,
   fetchPackageFromPURL,
   fetchVersionsFromPURL,
+  selectRecentVersions,
 } from "./helpers.ts";
 
 export const MAX_PURL_LENGTH = 2_048;
 export const MAX_BULK_PACKAGES = 50;
 export const DEFAULT_BULK_CONCURRENCY = 15;
 export const MAX_BULK_CONCURRENCY = 50;
+export const DEFAULT_VERSIONS_LIMIT = 20;
 
 export interface ToolResult<T> {
   content: Array<{ type: "text"; text: string }>;
@@ -24,6 +26,18 @@ export interface ToolResult<T> {
 
 export interface PURLParams {
   readonly purl: string;
+}
+
+export interface VersionsParams extends PURLParams {
+  readonly limit?: number | "all";
+}
+
+/** What an agent gets back from a version lookup: the newest releases and a count of the rest. */
+export interface RecentVersions {
+  readonly order: "newest first";
+  readonly total: number;
+  readonly omitted: number;
+  readonly versions: Version[];
 }
 
 export interface BulkPackagesParams {
@@ -83,13 +97,48 @@ export async function packageOperation(
   return jsonResult(await fetchPackageFromPURL(params.purl, signal, client));
 }
 
-export async function versionsOperation(
-  params: Readonly<PURLParams>,
+function versionsLimit(limit: unknown): number {
+  if (limit === undefined) return DEFAULT_VERSIONS_LIMIT;
+  if (limit === "all") return Number.POSITIVE_INFINITY;
+  if (typeof limit !== "number" || !Number.isInteger(limit) || limit < 1) {
+    throw new PkioError('Version limit must be a positive integer or "all"');
+  }
+  return limit;
+}
+
+/**
+ * The newest releases of one package, cut to the limit an agent asked for.
+ *
+ * @param purl - Package URL.
+ * @param limit - How many versions to return, `"all"` for the whole history; 20 when absent.
+ * @param signal - Optional cancellation signal.
+ * @param client - Optional HTTP client.
+ * @returns {Promise<RecentVersions>} The versions shown and how many were left out.
+ */
+export async function fetchRecentVersions(
+  purl: string,
+  limit?: number | "all",
   signal?: AbortSignal,
   client?: Client,
-) {
+): Promise<RecentVersions> {
+  const max = versionsLimit(limit);
+  const all = await fetchVersionsFromPURL(purl, signal, client);
+  const versions = selectRecentVersions(all, max);
+  return {
+    order: "newest first",
+    total: all.length,
+    omitted: all.length - versions.length,
+    versions,
+  };
+}
+
+export async function versionsOperation(
+  params: Readonly<VersionsParams>,
+  signal?: AbortSignal,
+  client?: Client,
+): Promise<ToolResult<RecentVersions>> {
   assertPURL(params.purl);
-  return jsonResult(await fetchVersionsFromPURL(params.purl, signal, client));
+  return jsonResult(await fetchRecentVersions(params.purl, params.limit, signal, client));
 }
 
 export async function dependenciesOperation(

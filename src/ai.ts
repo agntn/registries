@@ -5,12 +5,11 @@ import {
   fetchDependenciesFromPURL,
   fetchMaintainersFromPURL,
   fetchPackageFromPURL,
-  fetchVersionsFromPURL,
 } from "./helpers.ts";
+import { DEFAULT_VERSIONS_LIMIT, fetchRecentVersions } from "./tool-operations.ts";
 
 export const packageTool = tool({
-  description:
-    "Query package metadata from npm, PyPI, crates.io, RubyGems, Packagist, and Arch Linux using PURLs. Supports package info, versions, dependencies, maintainers, and bulk package metadata lookups.",
+  description: `Query package metadata from npm, PyPI, crates.io, RubyGems, Packagist, and Arch Linux using PURLs. Supports package info, versions, dependencies, maintainers, and bulk package metadata lookups. Versions come newest first, the ${DEFAULT_VERSIONS_LIMIT} newest unless limit asks for more.`,
   inputSchema: z.discriminatedUnion("operation", [
     z.object({
       operation: z.literal("package"),
@@ -19,6 +18,12 @@ export const packageTool = tool({
     z.object({
       operation: z.literal("versions"),
       purl: z.string().describe("Package PURL, for example pkg:npm/lodash or pkg:cargo/serde"),
+      limit: z
+        .union([z.number().int().min(1), z.literal("all")])
+        .optional()
+        .describe(
+          `How many of the newest versions to return, ${DEFAULT_VERSIONS_LIMIT} when absent. Pass "all" for the whole release history.`,
+        ),
     }),
     z.object({
       operation: z.literal("dependencies"),
@@ -49,7 +54,7 @@ export const packageTool = tool({
       case "package":
         return fetchPackageFromPURL(input.purl, abortSignal);
       case "versions":
-        return fetchVersionsFromPURL(input.purl, abortSignal);
+        return fetchRecentVersions(input.purl, input.limit, abortSignal);
       case "dependencies":
         return fetchDependenciesFromPURL(input.purl, abortSignal);
       case "maintainers":

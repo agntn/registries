@@ -73,6 +73,20 @@ describe("registries OMP extension", () => {
     expect(accepts(tool, { purls, concurrency: 1.5 })).toBe(false);
   });
 
+  it("should take a positive integer or all as the version limit", () => {
+    const tool = registerExtensionTools().tools.get("registries_versions");
+    if (!tool) throw new Error("Tool not registered: registries_versions");
+    const purl = "pkg:npm/lodash";
+
+    expect(accepts(tool, { purl })).toBe(true);
+    expect(accepts(tool, { purl, limit: 1 })).toBe(true);
+    expect(accepts(tool, { purl, limit: "all" })).toBe(true);
+    expect(accepts(tool, { purl, limit: 0 })).toBe(false);
+    expect(accepts(tool, { purl, limit: 1.5 })).toBe(false);
+    expect(accepts(tool, { purl, limit: "ALL" })).toBe(false);
+    expect(accepts(tool, { purl, max: 5 })).toBe(false);
+  });
+
   it("discovers ecosystems without network access", async () => {
     const tool = registerExtensionTools().tools.get("registries_ecosystems");
     if (!tool) throw new Error("Tool not registered: registries_ecosystems");
