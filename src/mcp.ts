@@ -21,7 +21,7 @@ import {
   type ToolResult,
   versionsOperation,
 } from "./tool-operations.ts";
-import { version } from "./version.ts";
+import { serverInfo } from "./server-info.ts";
 
 const PURL = Type.String({
   minLength: 1,
@@ -208,7 +208,7 @@ export async function callTool(
 }
 
 export function createMcpServer(): Server {
-  const server = new Server({ name: "registries", version }, { capabilities: { tools: {} } });
+  const server = new Server(serverInfo, { capabilities: { tools: {} } });
 
   server.setRequestHandler(ListToolsRequestSchema, () => ({ tools: [...toolListings] }));
 

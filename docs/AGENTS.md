@@ -19,7 +19,7 @@ docs/
 ├── app/utils/                     # ecosystems table, formatting, recorded landing samples, roster classes, tokenizers
 ├── app/pages/lookup.vue           # explorer, own route outside the docs layout
 ├── server/api/                    # package, versions, dependencies, maintainers, ecosystems over the library
-├── server/mcp/index.ts            # the Docus MCP handler at /mcp, named and versioned like `registries mcp`
+├── server/mcp/index.ts            # the Docus MCP handler at /mcp, introduced like `registries mcp` by `src/server-info.ts`
 ├── server/mcp/tools/              # one file per registry tool, each `registriesMcpTool("<name>")`
 ├── server/utils/query.ts          # parameter caps, cache, rate limit, error mapping
 ├── server/utils/registries-mcp.ts # a tool from `@agntn/registries/mcp`: its listing, the worker's limit, then `callTool`
@@ -61,6 +61,8 @@ Resolution traps, both caused by the repo root being a pnpm workspace:
 ## MCP
 
 `/mcp` is the Docus MCP server (`@nuxtjs/mcp-toolkit`) with the six registry tools beside its own `list-pages` and `get-page`. A file in `server/mcp/tools/` names one tool and nothing else: `registriesMcpTool()` takes the name, prose, annotations and schema from `toolListings` and runs `callTool()`, so a tool changed in `src/mcp.ts` changes here without an edit. A new tool needs one more file here, and `test/unit/mcp.test.ts` fails until it has one. The toolkit wants Zod, so it gets a `z.looseObject({})` whose `toJSONSchema` returns the listing's schema and whose `run` reads a missing `arguments` as `{}`. Any object passes Zod and `callTool()` refuses a bad one with the text `registries mcp` gives. Don't switch to `z.fromJSONSchema()`: Zod quotes an unknown key raw, bidi overrides included.
+
+Both servers introduce themselves with `serverInfo` from `src/server-info.ts`: name, version, a description and two icons, `public/favicon.svg` and `public/icon-512.png`, so a connector card isn't just a name. `test/unit/mcp.test.ts` fails when either icon goes missing.
 
 `/mcp` doesn't go through `cachedAnswer`, so `siteRefusal()` in `server/utils/registries-mcp.ts` stands in for it before `callTool()`. A bulk call with more PURLs than `RATE_LIMIT` is refused without spending anything; any other call spends `admitQueries()` on the same `REGISTRY_LIMIT` binding as the API routes, one query per PURL, none for `registries_ecosystems`. The binding is asked once per query and stops at the first refusal. A tool gets no event, so it reads one through `useEvent()`, which needs `nitro.experimental.asyncContext`. Each refusal is a tool error that names `npx -y @agntn/registries mcp` as the way around it.
 
