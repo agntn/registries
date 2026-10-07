@@ -1,10 +1,11 @@
-import { readdirSync } from "node:fs";
+import { existsSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { Client as RegistryClient } from "../../src/core/client.ts";
 import { callTool, createMcpServer, toolListings } from "../../src/mcp.ts";
+import { serverInfo } from "../../src/server-info.ts";
 
 const openConnections: Array<{ close(): Promise<void> }> = [];
 
@@ -45,6 +46,16 @@ describe("Registries MCP server", () => {
     ]);
   });
 
+  it("should introduce itself with a description and icons the site serves", async () => {
+    const client = await connectTestClient();
+
+    expect(client.getServerVersion()).toEqual(serverInfo);
+    for (const icon of serverInfo.icons) {
+      const file = new URL(`../../docs/public${new URL(icon.src).pathname}`, import.meta.url);
+      expect(existsSync(file), icon.src).toBe(true);
+    }
+  });
+
   it("serves the advertised CLI over stdio", async () => {
     const client = new Client({ name: "registries-stdio-test", version: "1.0.0" });
     const transport = new StdioClientTransport({
@@ -62,6 +73,7 @@ describe("Registries MCP server", () => {
     await client.connect(transport);
     const listed = await client.listTools();
 
+    expect(client.getServerVersion()).toEqual(serverInfo);
     expect(listed.tools).toHaveLength(6);
   });
 
