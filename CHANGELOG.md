@@ -1,5 +1,31 @@
 # Changelog
 
+## v0.4.4
+
+[compare changes](https://github.com/agntn/registries/compare/v0.4.3...v0.4.4)
+
+### 🚀 Enhancements
+
+- **docs:** Look up packages from any MCP client ([#143](https://github.com/agntn/registries/pull/143))
+
+### 🩹 Fixes
+
+- Stop cold parallel calls dropping packages ([#139](https://github.com/agntn/registries/pull/139))
+- **docs:** Keep forged IPs out of the miss count ([#142](https://github.com/agntn/registries/pull/142))
+- **cli:** Bow out once head has read enough ([#144](https://github.com/agntn/registries/pull/144))
+
+### 💅 Refactors
+
+- **client:** Own the retry loop, lose ofetch ([#140](https://github.com/agntn/registries/pull/140))
+
+### 🏡 Chore
+
+- Add `CODEOWNERS` ([#145](https://github.com/agntn/registries/pull/145))
+
+### ❤️ Contributors
+
+- Aeitwoen
+
 ## v0.4.3
 
 [compare changes](https://github.com/agntn/registries/compare/v0.4.2...v0.4.3)
