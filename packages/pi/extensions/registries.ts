@@ -23,6 +23,18 @@ const PURL = Type.String({
   description: "Package URL, for example pkg:npm/lodash or pkg:pypi/requests@2.32.3",
 });
 const PURLParams = Type.Object({ purl: PURL }, { additionalProperties: false });
+const VersionsParams = Type.Object(
+  {
+    purl: PURL,
+    limit: Type.Optional(
+      Type.Union([Type.Integer({ minimum: 1 }), Type.Literal("all")], {
+        description:
+          'How many of the newest versions to return, 20 when absent. Pass "all" for the whole release history.',
+      }),
+    ),
+  },
+  { additionalProperties: false },
+);
 const BulkPackagesParams = Type.Object(
   {
     purls: Type.Array(PURL, { minItems: 1, maxItems: 50 }),
@@ -53,10 +65,14 @@ export default function registriesExtension(pi: ExtensionAPI): void {
   pi.registerTool({
     name: "registries_versions",
     label: "Registry Versions",
-    description: "List normalized versions for one package URL",
+    description:
+      'List versions for one package URL, newest first with undated ones last. Returns the 20 newest unless limit asks for more or "all"; omitted counts the ones left out.',
     promptSnippet: "Use registries_versions to inspect package releases.",
-    promptGuidelines: ["Use registries_versions when release dates, integrity, or status matter."],
-    parameters: PURLParams,
+    promptGuidelines: [
+      "Use registries_versions when release dates, integrity, or status matter.",
+      'Pass limit "all" to registries_versions only when the whole release history matters; the 20 newest cover most questions.',
+    ],
+    parameters: VersionsParams,
     async execute(_toolCallId, params, signal): Promise<RegistryToolResult> {
       const { versionsOperation } = await loadToolOperations();
       return versionsOperation(params, signal);

@@ -1,5 +1,5 @@
 import type { Version } from "../../src/core/types.ts";
-import { selectRecentVersions } from "../../src/commands/versions.ts";
+import { selectRecentVersions } from "../../src/helpers.ts";
 
 function createVersion(number: string, publishedAt: string | null): Version {
   return {

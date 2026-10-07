@@ -1,17 +1,8 @@
 import { defineCommand } from "citty";
 import consola from "consola";
-import type { Version } from "../core/types.ts";
+import { selectRecentVersions } from "../helpers.ts";
 
 import { sharedArgs, resolvePURL, withErrorHandling } from "./shared.ts";
-export function selectRecentVersions(versions: readonly Version[], limit: number): Version[] {
-  return versions
-    .toSorted((a, b) => {
-      if (a.publishedAt === null) return b.publishedAt === null ? 0 : 1;
-      if (b.publishedAt === null) return -1;
-      return b.publishedAt.getTime() - a.publishedAt.getTime();
-    })
-    .slice(0, limit);
-}
 
 export default defineCommand({
   meta: {

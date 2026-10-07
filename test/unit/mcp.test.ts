@@ -75,6 +75,26 @@ describe("Registries MCP server", () => {
     expect(response.isError).toBe(true);
   });
 
+  it("should take a positive integer or all as the version limit at the protocol boundary", async () => {
+    const client = await connectTestClient();
+    const versions = (await client.listTools()).tools.find(
+      ({ name }) => name === "registries_versions",
+    );
+    const limit = versions?.inputSchema.properties?.["limit"];
+
+    expect(limit).toMatchObject({ anyOf: [{ type: "integer", minimum: 1 }, { const: "all" }] });
+    for (const bad of [0, 2.5, "every"]) {
+      const response = await client.callTool({
+        name: "registries_versions",
+        arguments: { purl: "pkg:npm/lodash", limit: bad },
+      });
+      expect(response.isError).toBe(true);
+      expect(response.content).toEqual([
+        { type: "text", text: "Invalid arguments for registries_versions" },
+      ]);
+    }
+  });
+
   it("returns unknown tools as errors without allowing line injection", async () => {
     const client = await connectTestClient();
     const response = await client.callTool({ name: "bad\ntool", arguments: {} });
@@ -97,6 +117,9 @@ describe("Registries MCP server", () => {
       ["registries_package", { purl: "pkg:npm/lodash", extra: true }],
       ["registries_package", { purl: "pkg:npm/lodash?repository_url=https://evil.test" }],
       ["registries_bulk_packages", { purls: [] }],
+      ["registries_versions", { purl: "pkg:npm/lodash", limit: 0 }],
+      ["registries_versions", { purl: "pkg:npm/lodash", limit: 1.5 }],
+      ["registries_versions", { purl: "pkg:npm/lodash", limit: "every" }],
       ["registries_nope", {}],
     ];
     for (const [name, args] of calls) {

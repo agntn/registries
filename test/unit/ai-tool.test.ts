@@ -12,7 +12,8 @@ const {
   mockBulkFetchPackages: vi.fn(),
 }));
 
-vi.mock("../../src/helpers.ts", () => ({
+vi.mock("../../src/helpers.ts", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../src/helpers.ts")>()),
   fetchPackageFromPURL: mockFetchPackageFromPURL,
   fetchVersionsFromPURL: mockFetchVersionsFromPURL,
   fetchDependenciesFromPURL: mockFetchDependenciesFromPURL,
@@ -41,16 +42,28 @@ describe("packageTool", () => {
     expect(result).toEqual({ name: "lodash", latestVersion: "4.17.21" });
   });
 
-  it("fetches versions", async () => {
-    mockFetchVersionsFromPURL.mockResolvedValueOnce([{ number: "1.0.0" }, { number: "2.0.0" }]);
+  it("fetches the newest versions and counts the rest", async () => {
+    const history = Array.from({ length: 25 }, (_, index) => ({
+      number: `1.${index}.0`,
+      publishedAt: new Date(Date.UTC(2020, 0, index + 1)),
+    }));
+    mockFetchVersionsFromPURL.mockResolvedValue(history);
 
-    const result = await packageTool.execute!(
+    const bounded = await packageTool.execute!(
       { operation: "versions", purl: "pkg:cargo/serde" },
       { toolCallId: "call-2", messages: [] },
     );
+    const all = await packageTool.execute!(
+      { operation: "versions", purl: "pkg:cargo/serde", limit: "all" },
+      { toolCallId: "call-2b", messages: [] },
+    );
 
-    expect(mockFetchVersionsFromPURL).toHaveBeenCalledWith("pkg:cargo/serde", undefined);
-    expect(result).toEqual([{ number: "1.0.0" }, { number: "2.0.0" }]);
+    expect(mockFetchVersionsFromPURL).toHaveBeenCalledWith("pkg:cargo/serde", undefined, undefined);
+    expect(bounded).toMatchObject({ order: "newest first", total: 25, omitted: 5 });
+    expect(bounded).toHaveProperty("versions.0.number", "1.24.0");
+    expect(bounded).toHaveProperty("versions.length", 20);
+    expect(all).toMatchObject({ total: 25, omitted: 0 });
+    expect(all).toHaveProperty("versions.length", 25);
   });
 
   it("fetches dependencies", async () => {
