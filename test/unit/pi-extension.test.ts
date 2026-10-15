@@ -5,7 +5,7 @@ import type {
 } from "@earendil-works/pi-coding-agent";
 import type { TSchema } from "typebox";
 import { Value } from "typebox/value";
-import registriesExtension from "../../packages/pi/extensions/registries.ts";
+import registriesExtension from "../../extensions/pi/registries.ts";
 import { registriesTools } from "../../src/tools.ts";
 
 type PiTool = ToolDefinition<TSchema, unknown, unknown>;

@@ -18,7 +18,7 @@ const hostProvidedPackages = [
 
 /* Every TypeScript file the package ships, as paths from the repo root. */
 function shippedSources(): string[] {
-  return ["src", "packages"].flatMap((dir) =>
+  return ["src", "extensions"].flatMap((dir) =>
     readdirSync(new URL(`../../${dir}/`, import.meta.url), { recursive: true })
       .map(String)
       .filter((file) => file.endsWith(".ts"))
