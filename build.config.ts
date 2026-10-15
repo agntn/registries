@@ -47,7 +47,8 @@ export default defineBuildConfig({
         "./src/tool-operations.ts",
         ...adapterInputs,
       ],
-      dts: true,
+      /** A map to the wrong line is worse than none, and remove-comments breaks every one. */
+      dts: { sourcemap: false },
     },
   ],
   hooks: bundleTypeboxHook,
