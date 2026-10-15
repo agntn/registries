@@ -207,14 +207,39 @@ export async function callTool(
   }
 }
 
+const RESTART = "src/ changed under this server, restart it to load the new code";
+
+/**
+ * Cached modules plus adapters imported after a pull make a mix nobody wrote. The bundle can't.
+ * Measured from the process start, so a pull that lands while `src/` is still loading counts too.
+ * @returns {Promise<(() => boolean) | undefined>} Whether `src/` changed, or nothing to watch.
+ */
+async function watchSource(): Promise<(() => boolean) | undefined> {
+  if (!import.meta.url.endsWith(".ts")) return undefined;
+  const { sourceChangeCheck } = await import("./source-change.ts");
+  return sourceChangeCheck(import.meta.dirname, performance.timeOrigin);
+}
+
+/**
+ * Run from `src/`, it refuses calls once that tree changes, checked before and after every call.
+ * @returns {Server} Unconnected MCP server.
+ */
 export function createMcpServer(): Server {
   const server = new Server(serverInfo, { capabilities: { tools: {} } });
+  const watching = watchSource();
 
   server.setRequestHandler(ListToolsRequestSchema, () => ({ tools: [...toolListings] }));
 
-  server.setRequestHandler(CallToolRequestSchema, (request, extra) =>
-    callTool(request.params.name, request.params.arguments ?? {}, extra.signal),
-  );
+  server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
+    const changed = await watching;
+    if (changed?.()) return errorResult(RESTART);
+    const result = await callTool(
+      request.params.name,
+      request.params.arguments ?? {},
+      extra.signal,
+    );
+    return changed?.() ? errorResult(RESTART) : result;
+  });
 
   return server;
 }
