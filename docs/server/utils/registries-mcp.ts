@@ -1,11 +1,5 @@
-import { callTool, toolListings } from "@agntn/registries/mcp";
-import {
-  defineMcpTool,
-  type McpToolDefinition,
-  type McpToolDefinitionListItem,
-} from "@nuxtjs/mcp-toolkit/server";
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import { z } from "zod";
+import type { ToolDefinition, ToolResult } from "@agntn/tools";
+import { registriesTools } from "../../../src/tools.ts";
 import { admitQueries, RATE_LIMIT, siteClient } from "./query";
 
 /** Where a refused call can still go: the same tools, run locally. */
@@ -15,30 +9,27 @@ const LOCAL_HINT = "or run npx -y @agntn/registries mcp, which asks the registri
  * Queries a call spends from {@link RATE_LIMIT}: one per PURL, none for the ecosystem list.
  *
  * @param {string} name - The tool's name.
- * @param {Readonly<Record<string, unknown>>} args - The arguments the client sent.
+ * @param {unknown} args - The arguments, already checked against the tool's schema.
  * @returns {number} How many queries to spend.
  */
-function queryCost(name: string, args: Readonly<Record<string, unknown>>): number {
+function queryCost(name: string, args: unknown): number {
   if (name === "registries_ecosystems") return 0;
-  const purls = args["purls"];
+  const purls = typeof args === "object" && args !== null && "purls" in args ? args.purls : undefined;
   return name === "registries_bulk_packages" && Array.isArray(purls) ? Math.max(1, purls.length) : 1;
 }
 
-function refusal(...lines: string[]): CallToolResult {
-  return { content: [{ type: "text", text: lines.join("\n") }], isError: true };
+function refusal(...lines: string[]): ToolResult {
+  return { content: [{ type: "text", text: lines.join("\n") }], details: undefined, isError: true };
 }
 
 /**
  * Why this worker turns down a call `registries mcp` would run, if it does.
  *
  * @param {string} name - The tool's name.
- * @param {Readonly<Record<string, unknown>>} args - The arguments the client sent.
- * @returns {Promise<CallToolResult | undefined>} The refusal, or nothing when the call may run.
+ * @param {unknown} args - The arguments, already checked against the tool's schema.
+ * @returns {Promise<ToolResult | undefined>} The refusal, or nothing when the call may run.
  */
-async function siteRefusal(
-  name: string,
-  args: Readonly<Record<string, unknown>>,
-): Promise<CallToolResult | undefined> {
+async function siteRefusal(name: string, args: unknown): Promise<ToolResult | undefined> {
   const cost = queryCost(name, args);
   if (cost > RATE_LIMIT) {
     return refusal(
@@ -56,32 +47,17 @@ async function siteRefusal(
 }
 
 /**
- * A `registries mcp` tool for Docus: its own schema in `tools/list`, the worker's limit and client on the call.
+ * The `registries mcp` tools for this worker: same names, schemas and text, the site's client, and
+ * the rate limit checked once the arguments pass.
  *
- * @param {string} name - The tool's name, such as `registries_package`.
- * @returns {McpToolDefinitionListItem} The tool definition for `server/mcp/tools/`.
+ * @returns {ToolDefinition[]} The six tools, each behind {@link siteRefusal}.
  */
-export function registriesMcpTool(name: string): McpToolDefinitionListItem {
-  const listing = toolListings.find((candidate) => candidate.name === name);
-  if (listing === undefined) {
-    throw new Error(`Unknown registries tool: ${name}`);
-  }
-  /** Any object passes Zod, so `callTool` refuses a bad one in the library's words. */
-  const schema = z.looseObject({});
-  schema._zod.toJSONSchema = () => ({ ...listing.inputSchema });
-  /** The SDK hands Zod a missing `arguments` untouched, so read it as the `{}` stdio gets. */
-  const run = schema._zod.run.bind(schema._zod);
-  schema._zod.run = (payload, context) =>
-    run(payload.value === undefined ? { ...payload, value: {} } : payload, context);
-  /** The toolkit types a raw shape only, and the SDK behind it takes a whole object too. */
-  const inputSchema = schema as unknown as NonNullable<McpToolDefinition["inputSchema"]>;
-  return defineMcpTool({
-    name: listing.name,
-    title: listing.title,
-    description: listing.description,
-    annotations: listing.annotations,
-    inputSchema,
-    handler: async (args: Readonly<Record<string, unknown>>, extra) =>
-      (await siteRefusal(name, args)) ?? callTool(name, args, extra.signal, siteClient()),
-  });
+export function siteTools(): ToolDefinition[] {
+  const tools: readonly ToolDefinition[] = registriesTools({ client: siteClient() });
+  return tools.map((tool): ToolDefinition => ({
+    ...tool,
+    async execute(args, context) {
+      return (await siteRefusal(tool.name, args)) ?? tool.execute(args, context);
+    },
+  }));
 }

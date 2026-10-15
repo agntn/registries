@@ -1,13 +1,12 @@
-import { defineCommand } from "citty";
-
-export default defineCommand({
-  meta: {
-    name: "mcp",
-    description: "Start the package registry MCP server over stdio",
-  },
-  async run() {
-    const { StdioServerTransport } = await import("@modelcontextprotocol/sdk/server/stdio.js");
-    const { createMcpServer } = await import("../mcp.ts");
-    await createMcpServer().connect(new StdioServerTransport());
-  },
-});
+/**
+ * Serves the MCP server over stdio, which owns stdout: anything else printed there breaks the
+ * client. The server and the SDK load here, so `registries --help` never does.
+ * @returns {Promise<void>} Once the transport is connected.
+ */
+export async function serveMcp(): Promise<void> {
+  const [{ createMcpServer }, { StdioServerTransport }] = await Promise.all([
+    import("../mcp.ts"),
+    import("@modelcontextprotocol/server/stdio"),
+  ]);
+  await createMcpServer().connect(new StdioServerTransport());
+}

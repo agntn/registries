@@ -31,10 +31,10 @@ Everything longer than this file is at [registries.agntn.dev](https://registries
 pnpm add @agntn/registries
 ```
 
-Node.js 26 or newer. `ai` and `zod` only if you want the AI SDK tool, nothing else touches them:
+Node.js 26 or newer. `ai` only if you want the AI SDK tools, nothing else touches it:
 
 ```bash
-pnpm add ai zod
+pnpm add ai
 ```
 
 ## 🚀 First call
@@ -44,15 +44,15 @@ npx @agntn/registries info npm/lodash
 ```
 
 ```
-  lodash@4.18.1
-  Lodash modular utilities.
+lodash@4.18.1
+Lodash modular utilities.
 
-  License:    MIT
-  Repository: https://github.com/lodash/lodash
-  Homepage:   https://lodash.com/
-  Registry:   https://www.npmjs.com/package/lodash
-  Keywords:   modules, stdlib, util
-  Ecosystem:  npm
+License:    MIT
+Repository: https://github.com/lodash/lodash
+Homepage:   https://lodash.com/
+Registry:   https://www.npmjs.com/package/lodash
+Keywords:   modules, stdlib, util
+Ecosystem:  npm
 ```
 
 No key, no config, no `pkg:`. From here on it's plain `registries`, which after `pnpm add` means `pnpm exec registries`, or `pnpm add -g @agntn/registries` once and it's on your PATH. And it really doesn't care which registry, try a crate:
@@ -62,16 +62,16 @@ registries info cargo/serde
 ```
 
 ```
-  serde@1.0.229
-  A generic serialization/deserialization framework
+serde@1.0.229
+A generic serialization/deserialization framework
 
-  License:    MIT OR Apache-2.0
-  Repository: https://github.com/serde-rs/serde
-  Homepage:   https://serde.rs
-  Docs:       https://docs.rs/serde
-  Registry:   https://crates.io/crates/serde
-  Keywords:   no_std, serde, serialization
-  Ecosystem:  cargo
+License:    MIT OR Apache-2.0
+Repository: https://github.com/serde-rs/serde
+Homepage:   https://serde.rs
+Docs:       https://docs.rs/serde
+Registry:   https://crates.io/crates/serde
+Keywords:   no_std, serde, serialization
+Ecosystem:  cargo
 ```
 
 Same lines, plus `Docs`, because crates.io knows about docs.rs. Nice of them. Versions come twenty at a time, `--limit` if that's too many or too few:
@@ -81,18 +81,18 @@ registries versions gem/rails --limit 5
 ```
 
 ```
-  rails — 519 versions
+rails: 521 versions
 
-  8.0.5.1  2026-07-29
-  7.2.3.2  2026-07-29
-  8.1.3.1  2026-07-29
-  8.1.3  2026-03-24
-  8.0.5  2026-03-24
+7.2.4  2026-09-24
+8.1.4  2026-09-24
+8.0.5.1  2026-07-29
+7.2.3.2  2026-07-29
+8.1.3.1  2026-07-29
 
-  ... and 514 more (use --limit to show more)
+... and 516 more (use --limit to show more)
 ```
 
-Three branches patched on the same Wednesday. Somebody at Rails had a day ;)
+Two branches on one Thursday, three on one Wednesday. Somebody at Rails keeps having a day ;)
 
 No version on `deps`? It takes the latest and says so:
 
@@ -101,21 +101,20 @@ registries deps alpm/aur/paru
 ```
 
 ```
-ℹ No version specified, using latest: 2.1.0-2
+No version specified, using latest: 2.1.0-2
+aur/paru@2.1.0-2: 6 dependencies
 
-  aur/paru@2.1.0-2 — 6 dependencies
+runtime (3)
+  git
+  pacman
+  libalpm.so >=14
 
-  runtime (3)
-    git
-    pacman
-    libalpm.so >=14
+build (1)
+  cargo
 
-  build (1)
-    cargo
-
-  optional (2)
-    bat  (optional)
-    devtools  (optional)
+optional (2)
+  bat (optional)
+  devtools (optional)
 ```
 
 An AUR helper that depends on pacman. Fair enough. `alpm/pacman` is short for `alpm/arch/pacman`, the AUR you have to name.
@@ -139,10 +138,12 @@ registries cache status
 | `versions`    | Newest first, twenty unless you `--limit`          | `registries versions gem/rails --limit 5` |
 | `deps`        | One version's dependencies, grouped by scope       | `registries deps pypi/flask@3.1.1`        |
 | `maintainers` | Who publishes it, email and role when there is one | `registries maintainers gem/rails`        |
+| `bulk`        | Up to fifty at once, a failed one left out         | `registries bulk npm/defu cargo/serde`    |
+| `ecosystems`  | The PURL types this build knows                    | `registries ecosystems`                   |
 | `cache`       | `status`, `path`, `prune`, `clear`                 | `registries cache status`                 |
 | `mcp`         | The MCP server on stdio                            | `registries mcp`                          |
 
-`--json` and `--no-cache` on every lookup, `--limit` on `versions`. Where the cache lives and what each command prints is in the [CLI guide](https://registries.agntn.dev/guide/cli).
+`--json` everywhere, `--no-cache` on the four lookups, `--limit` on `versions`, `--help` on all of them. Where the cache lives and what each command prints is in the [CLI guide](https://registries.agntn.dev/guide/cli).
 
 ## 🧠 Library
 
@@ -201,7 +202,7 @@ omp install @agntn/registries
 }
 ```
 
-The agent side is six read-only tools, `registries_package` through `registries_ecosystems`, and MCP, Pi and OMP all run the same code behind them. The AI SDK gets `packageTool` from `@agntn/registries/ai`, one tool, five operations: [Agents guide](https://registries.agntn.dev/guide/agents). And whatever a package says about itself was typed by whoever published it, so it's data for the model, not orders.
+The agent side is six read-only tools, `registries_package` through `registries_ecosystems`. Each one is defined once with [`@agntn/tools`](https://tools.agntn.dev), and MCP, Pi, OMP and the AI SDK all get that same definition. Same schema, same answer, same refusal. On the AI SDK that's `packageTool` through `ecosystemsTool` from `@agntn/registries/ai`: [Agents guide](https://registries.agntn.dev/guide/agents). And whatever a package says about itself was typed by whoever published it, so it's data for the model, not orders.
 
 No Node on the box? The docs site serves the same six tools at [registries.agntn.dev/mcp](https://registries.agntn.dev/guide/agents#mcp-with-or-without-node):
 

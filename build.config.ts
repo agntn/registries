@@ -1,6 +1,5 @@
 import { readdirSync } from "node:fs";
 import { defineBuildConfig } from "obuild/config";
-import type { BuildConfig } from "obuild";
 
 /**
  * Every adapter file is its own bundle input, so the manifest's `import()` resolves to a stable
@@ -10,28 +9,6 @@ import type { BuildConfig } from "obuild";
 const adapterInputs = readdirSync(new URL("./src/registries/", import.meta.url))
   .filter((file) => file.endsWith(".ts") && file !== "index.ts")
   .map((file) => `./src/registries/${file}`);
-
-const bundleTypeboxHook: NonNullable<BuildConfig["hooks"]> = {
-  rolldownConfig(config) {
-    const originalExternal = config.external;
-    const isTypebox = (id: string) => /^typebox(?:\/|$)/.test(id);
-
-    if (typeof originalExternal === "function") {
-      config.external = (id, importer, isResolved) =>
-        isTypebox(id) ? false : originalExternal(id, importer, isResolved);
-      return;
-    }
-
-    /** obuild marks the typebox peer external by name and by subpath pattern, and both have to go. */
-    if (Array.isArray(originalExternal)) {
-      config.external = originalExternal.filter((item) =>
-        typeof item === "string"
-          ? !isTypebox(item)
-          : !(item instanceof RegExp && item.test("typebox/value")),
-      );
-    }
-  },
-};
 
 export default defineBuildConfig({
   entries: [
@@ -44,12 +21,11 @@ export default defineBuildConfig({
         "./src/cache/index.ts",
         "./src/cli.ts",
         "./src/mcp.ts",
-        "./src/tool-operations.ts",
+        "./src/tools.ts",
         ...adapterInputs,
       ],
       /** A map to the wrong line is worse than none, and remove-comments breaks every one. */
       dts: { sourcemap: false },
     },
   ],
-  hooks: bundleTypeboxHook,
 });

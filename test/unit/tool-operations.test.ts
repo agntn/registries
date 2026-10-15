@@ -9,15 +9,45 @@ import {
   versionsOperation,
 } from "../../src/tool-operations.ts";
 
+const PURL = { purl: "pkg:npm/example@1.0.0" };
+
 describe("registry tool operations", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  /* The text spells the details, or the one list the details carry. */
   it.each([
-    ["package", packageOperation],
-    ["versions", versionsOperation],
-    ["dependencies", dependenciesOperation],
-    ["maintainers", maintainersOperation],
+    [
+      "package",
+      async () => {
+        const { content, details } = await packageOperation(PURL);
+        return { content, shown: details };
+      },
+    ],
+    [
+      "versions",
+      async () => {
+        const { content, details } = await versionsOperation(PURL);
+        return { content, shown: details };
+      },
+    ],
+    [
+      "dependencies",
+      async () => {
+        const { content, details } = await dependenciesOperation(PURL);
+        return { content, shown: details.dependencies };
+      },
+    ],
+    [
+      "maintainers",
+      async () => {
+        const { content, details } = await maintainersOperation(PURL);
+        return { content, shown: details.maintainers };
+      },
+    ],
   ] as const)("serializes %s results without formatting whitespace", async (_name, operation) => {
-    const client = new Client();
-    vi.spyOn(client, "getJSON").mockResolvedValue({
+    vi.spyOn(Client.prototype, "getJSON").mockResolvedValue({
       name: "example",
       description: 'Two  spaces\n\t"quoted" \\ path 日本語',
       "dist-tags": { latest: "1.0.0" },
@@ -28,11 +58,12 @@ describe("registry tool operations", () => {
       maintainers: [{ name: "example", email: "example@example.com" }],
     });
 
-    const result = await operation({ purl: "pkg:npm/example@1.0.0" }, undefined, client);
-    const text = result.content[0]?.text ?? "";
+    const { content, shown } = await operation();
+    const block = content[0];
+    const text = block?.type === "text" ? block.text : "";
 
-    expect(text).toBe(JSON.stringify(result.details));
-    expect(JSON.parse(text)).toEqual(JSON.parse(JSON.stringify(result.details, null, 2)));
+    expect(text).toBe(JSON.stringify(shown));
+    expect(JSON.parse(text)).toEqual(JSON.parse(JSON.stringify(shown, null, 2)));
   });
 
   function npmHistory(count: number): Record<string, unknown> {
@@ -112,7 +143,7 @@ describe("registry tool operations", () => {
     const result = await bulkPackagesOperation({ purls: ["pkg:npm/example"] }, undefined, client);
 
     expect(Object.keys(result.details)).toEqual(["pkg:npm/example"]);
-    expect(result.content[0]?.text).toBe(JSON.stringify(result.details));
+    expect(result.content).toEqual([{ type: "text", text: JSON.stringify(result.details) }]);
   });
 
   it("discovers every registered ecosystem without network access", async () => {
@@ -121,8 +152,7 @@ describe("registry tool operations", () => {
     expect(result.details).toEqual({
       ecosystems: ["alpm", "cargo", "composer", "gem", "npm", "pypi"],
     });
-    expect(result.content[0]?.type).toBe("text");
-    expect(result.content[0]?.text).toContain('"npm"');
+    expect(result.content).toEqual([{ type: "text", text: JSON.stringify(result.details) }]);
   });
 
   it("normalizes package metadata through the existing registry adapter", async () => {

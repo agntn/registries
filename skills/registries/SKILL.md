@@ -61,13 +61,20 @@ registries maintainers gem/rails
 registries maintainers pkg:composer/laravel/framework
 ```
 
+### Several packages at once
+
+```bash
+registries bulk npm/lodash cargo/serde pypi/flask --json
+registries ecosystems           # The PURL types this build knows
+```
+
 ### Cache management
 
 ```bash
 registries cache clear          # Clear all cached data
 ```
 
-Query commands (`info`, `versions`, `deps`, `maintainers`) accept `--json` for machine-readable output and `--no-cache` to bypass the cache.
+Every command takes `--json` for machine-readable output and `--help` for its flags. The four lookups (`info`, `versions`, `deps`, `maintainers`) also take `--no-cache` to bypass the cache. Errors go to stderr with exit code 1.
 
 ## Using the Library API
 

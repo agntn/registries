@@ -1,245 +1,37 @@
-import { Server } from "@modelcontextprotocol/sdk/server/index.js";
-import {
-  CallToolRequestSchema,
-  ListToolsRequestSchema,
-  type CallToolResult,
-  type Tool,
-  type ToolAnnotations,
-} from "@modelcontextprotocol/sdk/types.js";
-import { Type, type Static, type TSchema } from "typebox";
-import type { Client } from "./core/client.ts";
-import {
-  bulkPackagesOperation,
-  DEFAULT_VERSIONS_LIMIT,
-  dependenciesOperation,
-  ecosystemsOperation,
-  maintainersOperation,
-  MAX_BULK_CONCURRENCY,
-  MAX_BULK_PACKAGES,
-  MAX_PURL_LENGTH,
-  packageOperation,
-  type ToolResult,
-  versionsOperation,
-} from "./tool-operations.ts";
+import { callTool, createMcpServer as createToolServer, errorResult } from "@agntn/tools/mcp";
+import type { Server } from "@modelcontextprotocol/server";
 import { serverInfo } from "./server-info.ts";
-
-const PURL = Type.String({
-  minLength: 1,
-  maxLength: MAX_PURL_LENGTH,
-  description: "Package URL, for example pkg:npm/lodash or pkg:pypi/requests@2.32.3",
-});
-
-const PURLParams = Type.Object({ purl: PURL }, { additionalProperties: false });
-const VersionsParams = Type.Object(
-  {
-    purl: PURL,
-    limit: Type.Optional(
-      Type.Union([Type.Integer({ minimum: 1 }), Type.Literal("all")], {
-        description: `How many of the newest versions to return, ${DEFAULT_VERSIONS_LIMIT} when absent. Pass "all" for the whole release history.`,
-      }),
-    ),
-  },
-  { additionalProperties: false },
-);
-const BulkPackagesParams = Type.Object(
-  {
-    purls: Type.Array(PURL, { minItems: 1, maxItems: MAX_BULK_PACKAGES }),
-    concurrency: Type.Optional(Type.Integer({ minimum: 1, maximum: MAX_BULK_CONCURRENCY })),
-  },
-  { additionalProperties: false },
-);
-const EmptyParams = Type.Object({}, { additionalProperties: false });
-
-const REMOTE_READ: ToolAnnotations = {
-  readOnlyHint: true,
-  destructiveHint: false,
-  idempotentHint: false,
-  openWorldHint: true,
-};
-const LOCAL_READ: ToolAnnotations = {
-  readOnlyHint: true,
-  destructiveHint: false,
-  idempotentHint: true,
-  openWorldHint: false,
-};
-
-interface RegistryTool<S extends TSchema> {
-  readonly name: string;
-  readonly title: string;
-  readonly description: string;
-  readonly inputSchema: S;
-  readonly annotations: ToolAnnotations;
-  execute(
-    params: Readonly<Static<S>>,
-    signal?: AbortSignal,
-    client?: Client,
-  ): Promise<ToolResult<unknown>>;
-}
-
-function defineTool<S extends TSchema>(tool: Readonly<RegistryTool<S>>): RegistryTool<S> {
-  return tool;
-}
-
-const tools = [
-  defineTool({
-    name: "registries_package",
-    title: "Get package metadata",
-    description: "Fetch normalized metadata for one package URL.",
-    inputSchema: PURLParams,
-    annotations: REMOTE_READ,
-    execute: packageOperation,
-  }),
-  defineTool({
-    name: "registries_versions",
-    title: "List package versions",
-    description: `List versions for one package URL, newest first with undated ones last. Returns the ${DEFAULT_VERSIONS_LIMIT} newest unless limit asks for more or "all"; omitted counts the ones left out.`,
-    inputSchema: VersionsParams,
-    annotations: REMOTE_READ,
-    execute: versionsOperation,
-  }),
-  defineTool({
-    name: "registries_dependencies",
-    title: "List package dependencies",
-    description: "List dependencies for a versioned package URL.",
-    inputSchema: PURLParams,
-    annotations: REMOTE_READ,
-    execute: dependenciesOperation,
-  }),
-  defineTool({
-    name: "registries_maintainers",
-    title: "List package maintainers",
-    description: "List normalized maintainers for one package URL.",
-    inputSchema: PURLParams,
-    annotations: REMOTE_READ,
-    execute: maintainersOperation,
-  }),
-  defineTool({
-    name: "registries_bulk_packages",
-    title: "Get package metadata in bulk",
-    description: "Fetch normalized package metadata for up to 50 package URLs.",
-    inputSchema: BulkPackagesParams,
-    annotations: REMOTE_READ,
-    execute: bulkPackagesOperation,
-  }),
-  defineTool({
-    name: "registries_ecosystems",
-    title: "List registry ecosystems",
-    description: "List package ecosystems registered by this package.",
-    inputSchema: EmptyParams,
-    annotations: LOCAL_READ,
-    execute: ecosystemsOperation,
-  }),
-] as const;
-
-type AnyRegistryTool = (typeof tools)[number];
-
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
-
-function sanitizeField(value: string): string {
-  return Array.from(value)
-    .map((character) => {
-      const code = character.codePointAt(0) ?? 0;
-      return code <= 31 || (code >= 127 && code <= 159) ? " " : character;
-    })
-    .join("");
-}
-
-function errorResult(text: string): CallToolResult {
-  return { content: [{ type: "text", text: sanitizeField(text) }], isError: true };
-}
-
-function toCallToolResult(result: ToolResult<unknown>): CallToolResult {
-  return { content: result.content, ...(result.isError ? { isError: true } : {}) };
-}
-
-/**
- * SAFETY: TypeBox schemas conform to the JSON Schema object accepted by MCP.
- *
- * @param schema - TypeBox schema to expose through MCP.
- * @returns {Tool["inputSchema"]} The same schema under the MCP SDK type.
- */
-function toMcpSchema(schema: TSchema): Tool["inputSchema"] {
-  return schema as unknown as Tool["inputSchema"];
-}
-
-/** The `tools/list` entries shared by `registries mcp` and the MCP server of the docs site. */
-export const toolListings: readonly Tool[] = tools.map((tool): Tool => ({
-  name: tool.name,
-  title: tool.title,
-  description: tool.description,
-  inputSchema: toMcpSchema(tool.inputSchema),
-  annotations: tool.annotations,
-}));
-
-const toolsByName = new Map<string, AnyRegistryTool>(tools.map((tool) => [tool.name, tool]));
-
-/**
- * Runs one tool the way `tools/call` of `registries mcp` does, errors as results, never as a throw.
- *
- * @param {string} name - The tool's name, such as `registries_package`.
- * @param {Readonly<Record<string, unknown>>} args - The arguments the client sent.
- * @param {AbortSignal} [signal] - The request's signal, which stops the registry requests.
- * @param {Client} [client] - HTTP client for the registry requests, the default one when absent.
- * @returns {Promise<CallToolResult>} The tool's text, or the sanitized error.
- */
-export async function callTool(
-  name: string,
-  args: Readonly<Record<string, unknown>>,
-  signal?: AbortSignal,
-  client?: Client,
-): Promise<CallToolResult> {
-  const tool = toolsByName.get(name);
-  if (!tool) return errorResult(`Unknown registries tool: ${name}`);
-
-  const { Value } = await import("typebox/value");
-  if (!Value.Check(tool.inputSchema, args)) {
-    return errorResult(`Invalid arguments for ${tool.name}`);
-  }
-
-  try {
-    /** SAFETY: Value.Check validated args against the selected tool's schema. */
-    const validatedArgs = args as never;
-    return toCallToolResult(await tool.execute(validatedArgs, signal, client));
-  } catch (error) {
-    return errorResult(`${tool.name} failed: ${errorMessage(error)}`);
-  }
-}
+import { registriesTools } from "./tools.ts";
 
 const RESTART = "src/ changed under this server, restart it to load the new code";
 
 /**
  * Cached modules plus adapters imported after a pull make a mix nobody wrote. The bundle can't.
  * Measured from the process start, so a pull that lands while `src/` is still loading counts too.
- * @returns {Promise<(() => boolean) | undefined>} Whether `src/` changed, or nothing to watch.
+ * @returns {Promise<() => boolean>} Whether `src/` changed since this server started.
  */
-async function watchSource(): Promise<(() => boolean) | undefined> {
-  if (!import.meta.url.endsWith(".ts")) return undefined;
+async function watchSource(): Promise<() => boolean> {
   const { sourceChangeCheck } = await import("./source-change.ts");
   return sourceChangeCheck(import.meta.dirname, performance.timeOrigin);
 }
 
 /**
- * Run from `src/`, it refuses calls once that tree changes, checked before and after every call.
+ * The stdio server with the six tools Pi, OMP, the AI SDK and the CLI get. Run from `src/`, it
+ * refuses calls once that tree changes, checked before the tool name and after the answer.
  * @returns {Server} Unconnected MCP server.
  */
 export function createMcpServer(): Server {
-  const server = new Server(serverInfo, { capabilities: { tools: {} } });
+  const tools = registriesTools();
+  const server = createToolServer(serverInfo, tools);
+  if (!import.meta.url.endsWith(".ts")) return server;
+
   const watching = watchSource();
-
-  server.setRequestHandler(ListToolsRequestSchema, () => ({ tools: [...toolListings] }));
-
-  server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
+  server.setRequestHandler("tools/call", async (request, ctx) => {
     const changed = await watching;
-    if (changed?.()) return errorResult(RESTART);
-    const result = await callTool(
-      request.params.name,
-      request.params.arguments ?? {},
-      extra.signal,
-    );
-    return changed?.() ? errorResult(RESTART) : result;
+    if (changed()) return errorResult(RESTART);
+    const { name, arguments: args = {} } = request.params;
+    const result = await callTool(serverInfo, tools, name, args, { signal: ctx.mcpReq.signal });
+    return changed() ? errorResult(RESTART) : result;
   });
-
   return server;
 }

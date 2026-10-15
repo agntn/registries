@@ -2,45 +2,31 @@
 
 ## OVERVIEW
 
-`src/commands` defines CLI subcommands and shared command utilities on top of core/helpers/cache layers.
+`src/commands` holds what the CLI's own commands run. The commands themselves are `defineTool` entries in `src/cli-commands.ts`, which `runCli` from `@agntn/tools/cli` builds next to the commands it generates from `src/tools.ts`. Each entry imports its file here only in `execute`, so `registries --help` loads none of them.
 
 ## STRUCTURE
 
 ```text
 src/commands/
-|- shared.ts       # shared args, PURL resolver, error wrapper
-|- info.ts         # package metadata command
-|- versions.ts     # versions list command
-|- deps.ts         # dependencies command (versioned)
-|- maintainers.ts  # maintainer listing command
-`- cache.ts        # cache status/path/clear/prune
+|- shared.ts       # shorthand PURLs, the cached resolver, failure lines, text results
+|- info.ts         # package card
+|- versions.ts     # newest releases
+|- deps.ts         # one release's dependencies, the latest when the PURL names none
+|- maintainers.ts  # maintainer list
+|- bulk.ts         # the bulk tool with shorthand PURLs
+|- cache.ts        # cache status/path/clear/prune
+`- mcp.ts          # serveMcp, the stdio server `src/cli.ts` starts
 ```
-
-## WHERE TO LOOK
-
-| Task                       | Location                      | Notes                                |
-| -------------------------- | ----------------------------- | ------------------------------------ |
-| Shared argument flags      | `src/commands/shared.ts`      | `--json` and `--no-cache` handling   |
-| PURL input resolution      | `src/commands/shared.ts`      | Optional `pkg:` prefix normalization |
-| `info` output flow         | `src/commands/info.ts`        | Package metadata command             |
-| `versions` output flow     | `src/commands/versions.ts`    | Version list command                 |
-| `deps` output flow         | `src/commands/deps.ts`        | Version-specific dependency command  |
-| `maintainers` output flow  | `src/commands/maintainers.ts` | Maintainer listing command           |
-| Cache maintenance commands | `src/commands/cache.ts`       | status/path/clear/prune subcommands  |
 
 ## CONVENTIONS
 
-- Commands are thin orchestration layers; domain logic stays in core/cache/helpers.
-- Wrap command bodies with shared error handling helpers.
-- Keep output dual-mode (`human` + `--json`).
+- Commands are thin orchestration layers; domain logic stays in core/helpers/cache.
+- A lookup returns its text as the tool result and its data as `details`, which `--json` prints.
+- A failure the library types becomes an `isError` result through `answer()`: stderr, exit code 1. Anything else keeps its stack.
+- Text has no colors. `runCli` strips escape sequences anyway.
 
 ## ANTI-PATTERNS
 
 - Do not reimplement PURL parsing in individual command files.
 - Do not mutate cache internals directly from commands; use cache API.
-- Do not bypass shared argument definitions for common flags.
-
-## NOTES
-
-- `src/cli.ts` owns subcommand registration; keep command files focused on execution.
-- For new command output, maintain parity between human-readable and `--json` branches.
+- Do not import a command file statically from `src/cli-commands.ts`.

@@ -6,15 +6,16 @@ import type {
 import type { TSchema } from "typebox";
 import { Value } from "typebox/value";
 import registriesExtension from "../../packages/pi/extensions/registries.ts";
+import { registriesTools } from "../../src/tools.ts";
 
 type PiTool = ToolDefinition<TSchema, unknown, unknown>;
 
 /**
  * SAFETY: the extension only uses registerTool while it registers itself.
  *
- * @returns {Map<string, PiTool>} Tools captured from the extension.
+ * @returns {Promise<Map<string, PiTool>>} Tools captured from the extension.
  */
-function registerExtensionTools(): Map<string, PiTool> {
+async function registerExtensionTools(): Promise<Map<string, PiTool>> {
   const tools = new Map<string, PiTool>();
   const api = {
     registerTool(tool: ToolDefinition<TSchema, unknown, unknown>) {
@@ -22,7 +23,7 @@ function registerExtensionTools(): Map<string, PiTool> {
     },
   };
 
-  registriesExtension(api as unknown as ExtensionAPI);
+  await registriesExtension(api as unknown as ExtensionAPI);
   return tools;
 }
 
@@ -30,8 +31,8 @@ function registerExtensionTools(): Map<string, PiTool> {
 const unusedContext = {} as ExtensionContext;
 
 describe("registries Pi extension", () => {
-  it("registers the complete tool set", () => {
-    expect([...registerExtensionTools().keys()]).toEqual([
+  it("registers the complete tool set", async () => {
+    expect([...(await registerExtensionTools()).keys()]).toEqual([
       "registries_package",
       "registries_versions",
       "registries_dependencies",
@@ -41,15 +42,15 @@ describe("registries Pi extension", () => {
     ]);
   });
 
-  it("names each tool in every prompt guideline", () => {
-    for (const tool of registerExtensionTools().values()) {
+  it("names each tool in every prompt guideline", async () => {
+    for (const tool of (await registerExtensionTools()).values()) {
       expect(tool.promptGuidelines).not.toHaveLength(0);
       for (const guideline of tool.promptGuidelines ?? []) expect(guideline).toContain(tool.name);
     }
   });
 
-  it("bounds bulk package lookups", () => {
-    const tool = registerExtensionTools().get("registries_bulk_packages");
+  it("bounds bulk package lookups", async () => {
+    const tool = (await registerExtensionTools()).get("registries_bulk_packages");
     if (!tool) throw new Error("Tool not registered: registries_bulk_packages");
     const purls = ["pkg:npm/lodash"];
 
@@ -60,8 +61,8 @@ describe("registries Pi extension", () => {
     expect(Value.Check(tool.parameters, { purls, concurrency: 1.5 })).toBe(false);
   });
 
-  it("should take a positive integer or all as the version limit", () => {
-    const tool = registerExtensionTools().get("registries_versions");
+  it("should take a positive integer or all as the version limit", async () => {
+    const tool = (await registerExtensionTools()).get("registries_versions");
     if (!tool) throw new Error("Tool not registered: registries_versions");
     const purl = "pkg:npm/lodash";
 
@@ -74,8 +75,24 @@ describe("registries Pi extension", () => {
     expect(Value.Check(tool.parameters, { purl, max: 5 })).toBe(false);
   });
 
+  it("should register the schema every surface shares", async () => {
+    const tools = await registerExtensionTools();
+    for (const definition of registriesTools()) {
+      expect(tools.get(definition.name)?.parameters).toEqual(definition.input);
+    }
+  });
+
+  it("should refuse a bad call in the core when Pi skips its own check", async () => {
+    const tool = (await registerExtensionTools()).get("registries_bulk_packages");
+    if (!tool) throw new Error("Tool not registered: registries_bulk_packages");
+
+    await expect(
+      tool.execute("test", { purls: [] }, undefined, undefined, unusedContext),
+    ).rejects.toThrow("/purls");
+  });
+
   it("discovers ecosystems without network access", async () => {
-    const tool = registerExtensionTools().get("registries_ecosystems");
+    const tool = (await registerExtensionTools()).get("registries_ecosystems");
     if (!tool) throw new Error("Tool not registered: registries_ecosystems");
     const result = await tool.execute("test", {}, undefined, undefined, unusedContext);
 

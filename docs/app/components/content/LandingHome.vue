@@ -91,16 +91,16 @@ const { samples, paused, current, step } = useLandingLookup();
       to="/guide/agents"
       link="Agents"
       :checks="[
-        'packageTool on the /ai subpath: package, versions, dependencies, maintainers and bulk-packages behind one input schema',
-        'registries mcp serves the same lookups over stdio, and the Pi and OMP extensions render them in a terminal',
+        'Six AI SDK tools on the /ai subpath, packageTool through ecosystemsTool, one schema each',
+        'registries mcp serves the same six over stdio, and the Pi and OMP extensions register them in a terminal',
         'Bulk lookups skip a failed package instead of failing the batch',
       ]"
       reverse
     >
-      <code class="registries-code">packageTool</code> is a Vercel AI SDK tool that needs no
-      wiring. The MCP server and the Pi and OMP extensions go through the same helpers, so a model
-      asking about a PURL gets the same normalized answer the CLI prints. A description that says
-      "ignore previous instructions" is still just a description.
+      Each tool is written once. The AI SDK, the MCP server and the Pi and OMP extensions all get
+      that one definition, so a model asking about a PURL gets the same answer wherever it sits.
+      Even the refusals match. A description that says "ignore previous instructions" is still
+      just a description.
       <template #visual>
         <LandingToolCall :sample="current" />
       </template>

@@ -1,40 +1,42 @@
+import { sanitizeLine, type ToolResult } from "@agntn/tools";
 import type { Package } from "../core/types.ts";
 import type { Registry } from "../core/registry.ts";
-import { defineCommand } from "citty";
-import consola from "consola";
 import { resolveDocsUrl } from "../helpers.ts";
-import { sharedArgs, resolvePURL, withErrorHandling } from "./shared.ts";
+import { answer, linesResult, resolvePURL, type LookupArgs } from "./shared.ts";
 
-export function outputPackageInfo(pkg: Package, name: string, reg: Registry): void {
+/**
+ * The card `registries info` prints, one line per field whatever the registry put in it.
+ *
+ * @param pkg - The package.
+ * @param name - Its name as the registry spells it.
+ * @param reg - The registry it came from.
+ * @returns {string[]} The lines, without colors.
+ */
+export function packageInfoLines(pkg: Package, name: string, reg: Registry): string[] {
   const urls = reg.urls();
   const registryUrl = urls.registry(name);
   const docsUrl = resolveDocsUrl(pkg, urls, pkg.latestVersion || undefined);
   const showDocs = shouldShowDocs(docsUrl, pkg, registryUrl);
 
-  consola.log("");
-  consola.log(
-    `  \x1B[1m\x1B[36m${pkg.name}\x1B[0m${pkg.latestVersion ? `\x1B[90m@${pkg.latestVersion}\x1B[0m` : ""}`,
-  );
-  if (pkg.description) {
-    consola.log(`  ${pkg.description}`);
-  }
-  consola.log("");
+  const lines = [sanitizeLine(`${pkg.name}${pkg.latestVersion ? `@${pkg.latestVersion}` : ""}`)];
+  if (pkg.description) lines.push(sanitizeLine(pkg.description));
+  lines.push("");
 
   const rows = [
-    ["License:", "    ", pkg.licenses, Boolean(pkg.licenses)],
-    ["Repository:", " ", pkg.repository, Boolean(pkg.repository)],
-    ["Homepage:", "   ", pkg.homepage, Boolean(pkg.homepage)],
-    ["Docs:", "       ", docsUrl, showDocs],
-    ["Registry:", "   ", registryUrl, true],
-    ["Keywords:", "   ", pkg.keywords.join(", "), pkg.keywords.length > 0],
-    ["Namespace:", "  ", pkg.namespace, Boolean(pkg.namespace)],
-    ["Ecosystem:", "  ", reg.ecosystem(), true],
+    ["License:", pkg.licenses, Boolean(pkg.licenses)],
+    ["Repository:", pkg.repository, Boolean(pkg.repository)],
+    ["Homepage:", pkg.homepage, Boolean(pkg.homepage)],
+    ["Docs:", docsUrl, showDocs],
+    ["Registry:", registryUrl, true],
+    ["Keywords:", pkg.keywords.join(", "), pkg.keywords.length > 0],
+    ["Namespace:", pkg.namespace, Boolean(pkg.namespace)],
+    ["Ecosystem:", reg.ecosystem(), true],
   ] as const;
 
-  for (const [label, spacing, value, visible] of rows) {
-    if (visible) consola.log(`  \x1B[90m${label}\x1B[0m${spacing}${value}`);
+  for (const [label, value, visible] of rows) {
+    if (visible) lines.push(`${label.padEnd(12)}${sanitizeLine(value)}`);
   }
-  consola.log("");
+  return lines;
 }
 
 function shouldShowDocs(
@@ -45,30 +47,16 @@ function shouldShowDocs(
   return Boolean(docsUrl) && ![pkg.homepage, pkg.repository, registryUrl].includes(docsUrl);
 }
 
-export default defineCommand({
-  meta: {
-    name: "info",
-    description: "Show package metadata",
-  },
-  args: {
-    ...sharedArgs,
-    purl: {
-      type: "positional",
-      description: "Package PURL (e.g. pkg:npm/lodash, cargo/serde@1.0)",
-      required: true,
-    },
-  },
-  async run({ args }) {
-    await withErrorHandling(async () => {
-      const [reg, name] = await resolvePURL(args.purl, args.cache);
-      const pkg = await reg.fetchPackage(name);
-
-      if (args.json) {
-        console.log(JSON.stringify(pkg, null, 2));
-        return;
-      }
-
-      outputPackageInfo(pkg, name, reg);
-    });
-  },
-});
+/**
+ * `registries info`: the package card, or the package itself under `--json`.
+ *
+ * @param args - The package and the cache switch.
+ * @returns {Promise<ToolResult<Package | undefined>>} The card over the package.
+ */
+export function info(args: LookupArgs): Promise<ToolResult<Package | undefined>> {
+  return answer(async () => {
+    const [reg, name] = await resolvePURL(args.purl, args.cache);
+    const pkg = await reg.fetchPackage(name);
+    return linesResult(packageInfoLines(pkg, name, reg), pkg);
+  });
+}

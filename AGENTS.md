@@ -33,11 +33,15 @@ src/
 ├── core/            # contracts, PURL parser, client, errors, normalization
 ├── registries/      # per-ecosystem adapters (npm, pypi, cargo, rubygems, packagist, alpm) + the lazy manifest
 ├── cache/           # optional decorator: storage, lockfile TTL, integrity
-├── commands/        # CLI subcommands (citty)
+├── commands/        # what the CLI's own commands run: the four lookups, bulk, cache, mcp
 ├── index.ts         # public API barrel
 ├── helpers.ts       # high-level PURL convenience wrappers
-├── ai.ts            # Vercel AI SDK tool integration
-├── cli.ts           # executable entrypoint
+├── tools.ts         # one @agntn/tools definition per agent tool, the list every surface gets
+├── tool-operations.ts # the executors behind those tools, loaded on the first call
+├── cli-commands.ts  # the CLI's own command definitions, in place of the generated ones
+├── ai.ts            # the tools for the Vercel AI SDK
+├── mcp.ts           # the stdio MCP server
+├── cli.ts           # executable entrypoint: `mcp`, else runCli from cli-run.ts
 └── types.ts         # root type re-exports
 test/
 ├── unit/            # deterministic, mocked
@@ -51,13 +55,14 @@ docs/                # Docus site: guide, registry pages, live lookup explorer a
 
 ### Where to put new code
 
-| What                  | Where                                                           |
-| --------------------- | --------------------------------------------------------------- |
-| New ecosystem adapter | `src/registries/<name>.ts` + entry in `src/registries/index.ts` |
-| New CLI command       | `src/commands/<name>.ts` + wire in `src/cli.ts`                 |
-| Public API addition   | export from `src/index.ts`                                      |
-| Shared type/contract  | `src/core/types.ts`                                             |
-| New unit test         | `test/unit/<module>.test.ts`                                    |
+| What                          | Where                                                                |
+| ----------------------------- | -------------------------------------------------------------------- |
+| New ecosystem adapter         | `src/registries/<name>.ts` + entry in `src/registries/index.ts`      |
+| New agent tool                | `defineTool` in `src/tools.ts`, executor in `src/tool-operations.ts` |
+| New command for the CLI alone | `defineTool` in `src/cli-commands.ts`, its code in `src/commands/`   |
+| Public API addition           | export from `src/index.ts`                                           |
+| Shared type/contract          | `src/core/types.ts`                                                  |
+| New unit test                 | `test/unit/<module>.test.ts`                                         |
 
 ## Code Conventions
 
@@ -107,15 +112,16 @@ docs/                # Docus site: guide, registry pages, live lookup explorer a
 
 ## Key Symbols
 
-| Symbol         | Location                  | Role                                                        |
-| -------------- | ------------------------- | ----------------------------------------------------------- |
-| `Registry`     | `src/core/registry.ts`    | Abstract contract shared by adapters and decorators         |
-| `create`       | `src/core/registry.ts`    | Imports and instantiates the adapter for an ecosystem key   |
-| `builtins`     | `src/registries/index.ts` | Manifest of shipped adapters: key, default URL, lazy loader |
-| `createCached` | `src/cache/index.ts`      | Decorates registry with cache + lockfile                    |
-| `parsePURL`    | `src/core/purl.ts`        | Canonical PURL parser — single source of truth              |
-| `Client`       | `src/core/client.ts`      | Central HTTP: retry, timeout, rate limiting                 |
-| `DEFAULT_TTL`  | `src/cache/lockfile.ts`   | Project-wide cache freshness policy                         |
+| Symbol            | Location                  | Role                                                        |
+| ----------------- | ------------------------- | ----------------------------------------------------------- |
+| `Registry`        | `src/core/registry.ts`    | Abstract contract shared by adapters and decorators         |
+| `create`          | `src/core/registry.ts`    | Imports and instantiates the adapter for an ecosystem key   |
+| `builtins`        | `src/registries/index.ts` | Manifest of shipped adapters: key, default URL, lazy loader |
+| `createCached`    | `src/cache/index.ts`      | Decorates registry with cache + lockfile                    |
+| `parsePURL`       | `src/core/purl.ts`        | Canonical PURL parser, single source of truth               |
+| `Client`          | `src/core/client.ts`      | Central HTTP: retry, timeout, rate limiting                 |
+| `DEFAULT_TTL`     | `src/cache/lockfile.ts`   | Project-wide cache freshness policy                         |
+| `registriesTools` | `src/tools.ts`            | The six tools for MCP, Pi, OMP, the AI SDK and the CLI      |
 
 ## Banned Patterns
 
@@ -156,4 +162,4 @@ docs/                # Docus site: guide, registry pages, live lookup explorer a
 - e2e smoke tests are network-sensitive — failures may be transient.
 - In a checkout `dist/cli.mjs mcp` serves `src/` (`REGISTRIES_DIST=1` keeps the bundle), and that server refuses tool calls once `src/` changes under it. A change to `src/cli.ts` itself still needs `pnpm build`. `test/unit/cli.test.ts` covers both modes and every guard, and skips them without `dist/`.
 - `build.config.ts` reads `src/registries/` and makes every adapter its own entry (`dist/registries/<name>.mjs`, exported as `./registries/*`), so the manifest's `import()` resolves to a stable file and `dist/index.mjs` never pulls an adapter in statically.
-- `typebox` is an optional peer with the `"*"` range Pi 0.99 asks for, since Pi warns on every load of a package that lists it in `dependencies` (#132); the exact pin sits in `devDependencies`. Pi supplies its own copy to the extension, and the build inlines one into `dist` for the CLI and the MCP server, `typebox/value` included. `test/unit/build-config.test.ts` guards both.
+- The agent tools are defined once in `src/tools.ts` with `@agntn/tools`, whose adapters build the MCP server, the Pi and OMP extensions, the AI SDK tools and the CLI. Schemas take `Type` from `@agntn/tools`, never a bare `typebox` import, which OMP rewrites to a facade that validates nothing. `test/unit/build-config.test.ts` guards it. The docs worker serves the same definitions at `/mcp` through `toToolkitTools`.

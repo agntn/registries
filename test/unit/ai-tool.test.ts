@@ -21,9 +21,20 @@ vi.mock("../../src/helpers.ts", async (importOriginal) => ({
   bulkFetchPackages: mockBulkFetchPackages,
 }));
 
-import { packageTool } from "../../src/ai.ts";
+import {
+  bulkPackagesTool,
+  dependenciesTool,
+  maintainersTool,
+  packageTool,
+  versionsTool,
+} from "../../src/ai.ts";
 
-describe("packageTool", () => {
+/* The AI SDK 7 options every `execute` takes. */
+function options(toolCallId: string) {
+  return { toolCallId, messages: [], context: {} };
+}
+
+describe("AI SDK tools", () => {
   it("has description and input schema", () => {
     expect(packageTool.description).toBeTypeOf("string");
     expect(packageTool.inputSchema).toBeDefined();
@@ -33,13 +44,11 @@ describe("packageTool", () => {
   it("fetches package metadata", async () => {
     mockFetchPackageFromPURL.mockResolvedValueOnce({ name: "lodash", latestVersion: "4.17.21" });
 
-    const result = await packageTool.execute!(
-      { operation: "package", purl: "pkg:npm/lodash" },
-      { toolCallId: "call-1", messages: [] },
-    );
+    const result = await packageTool.execute!({ purl: "pkg:npm/lodash" }, options("call-1"));
 
-    expect(mockFetchPackageFromPURL).toHaveBeenCalledWith("pkg:npm/lodash", undefined);
-    expect(result).toEqual({ name: "lodash", latestVersion: "4.17.21" });
+    expect(mockFetchPackageFromPURL).toHaveBeenCalledWith("pkg:npm/lodash", undefined, undefined);
+    expect(result).toMatchObject({ name: "lodash", latestVersion: "4.17.21" });
+    expect(result).toHaveProperty("text", '{"name":"lodash","latestVersion":"4.17.21"}');
   });
 
   it("fetches the newest versions and counts the rest", async () => {
@@ -49,13 +58,10 @@ describe("packageTool", () => {
     }));
     mockFetchVersionsFromPURL.mockResolvedValue(history);
 
-    const bounded = await packageTool.execute!(
-      { operation: "versions", purl: "pkg:cargo/serde" },
-      { toolCallId: "call-2", messages: [] },
-    );
-    const all = await packageTool.execute!(
-      { operation: "versions", purl: "pkg:cargo/serde", limit: "all" },
-      { toolCallId: "call-2b", messages: [] },
+    const bounded = await versionsTool.execute!({ purl: "pkg:cargo/serde" }, options("call-2"));
+    const all = await versionsTool.execute!(
+      { purl: "pkg:cargo/serde", limit: "all" },
+      options("call-2b"),
     );
 
     expect(mockFetchVersionsFromPURL).toHaveBeenCalledWith("pkg:cargo/serde", undefined, undefined);
@@ -69,25 +75,30 @@ describe("packageTool", () => {
   it("fetches dependencies", async () => {
     mockFetchDependenciesFromPURL.mockResolvedValueOnce([{ name: "click", requirements: ">=8.0" }]);
 
-    const result = await packageTool.execute!(
-      { operation: "dependencies", purl: "pkg:pypi/flask@3.1.1" },
-      { toolCallId: "call-3", messages: [] },
+    const result = await dependenciesTool.execute!(
+      { purl: "pkg:pypi/flask@3.1.1" },
+      options("call-3"),
     );
 
-    expect(mockFetchDependenciesFromPURL).toHaveBeenCalledWith("pkg:pypi/flask@3.1.1", undefined);
-    expect(result).toEqual([{ name: "click", requirements: ">=8.0" }]);
+    expect(mockFetchDependenciesFromPURL).toHaveBeenCalledWith(
+      "pkg:pypi/flask@3.1.1",
+      undefined,
+      undefined,
+    );
+    expect(result).toHaveProperty("dependencies", [{ name: "click", requirements: ">=8.0" }]);
   });
 
   it("fetches maintainers", async () => {
     mockFetchMaintainersFromPURL.mockResolvedValueOnce([{ login: "dhh", role: "author" }]);
 
-    const result = await packageTool.execute!(
-      { operation: "maintainers", purl: "pkg:gem/rails" },
-      { toolCallId: "call-4", messages: [] },
-    );
+    const result = await maintainersTool.execute!({ purl: "pkg:gem/rails" }, options("call-4"));
 
-    expect(mockFetchMaintainersFromPURL).toHaveBeenCalledWith("pkg:gem/rails", undefined);
-    expect(result).toEqual([{ login: "dhh", role: "author" }]);
+    expect(mockFetchMaintainersFromPURL).toHaveBeenCalledWith(
+      "pkg:gem/rails",
+      undefined,
+      undefined,
+    );
+    expect(result).toHaveProperty("maintainers", [{ login: "dhh", role: "author" }]);
   });
 
   it("fetches bulk package metadata and serializes the map", async () => {
@@ -98,20 +109,17 @@ describe("packageTool", () => {
       ]),
     );
 
-    const result = await packageTool.execute!(
-      {
-        operation: "bulk-packages",
-        purls: ["pkg:npm/lodash", "pkg:cargo/serde"],
-        concurrency: 4,
-      },
-      { toolCallId: "call-5", messages: [] },
+    const result = await bulkPackagesTool.execute!(
+      { purls: ["pkg:npm/lodash", "pkg:cargo/serde"], concurrency: 4 },
+      options("call-5"),
     );
 
     expect(mockBulkFetchPackages).toHaveBeenCalledWith(["pkg:npm/lodash", "pkg:cargo/serde"], {
       concurrency: 4,
       signal: undefined,
+      client: undefined,
     });
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       "pkg:npm/lodash": { name: "lodash" },
       "pkg:cargo/serde": { name: "serde" },
     });

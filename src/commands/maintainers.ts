@@ -1,59 +1,47 @@
+import { sanitizeLine, type ToolResult } from "@agntn/tools";
 import type { Maintainer } from "../core/types.ts";
-import { defineCommand } from "citty";
-import consola from "consola";
-import { sharedArgs, resolvePURL, withErrorHandling } from "./shared.ts";
+import { answer, linesResult, resolvePURL, type LookupArgs } from "./shared.ts";
 
-export default defineCommand({
-  meta: {
-    name: "maintainers",
-    description: "List package maintainers",
-  },
-  args: {
-    ...sharedArgs,
-    purl: {
-      type: "positional",
-      description: "Package PURL (e.g. pkg:npm/lodash, gem/rails)",
-      required: true,
-    },
-  },
-  async run({ args }) {
-    await withErrorHandling(async () => {
-      const [reg, name] = await resolvePURL(args.purl, args.cache);
-      const maintainers = await reg.fetchMaintainers(name);
-
-      if (args.json) {
-        console.log(JSON.stringify(maintainers, null, 2));
-        return;
-      }
-
-      outputMaintainers(name, maintainers);
-    });
-  },
-});
-
-function outputMaintainers(name: string, maintainers: readonly Maintainer[]): void {
-  consola.log("");
-  consola.log(
-    `  \x1B[1m${name}\x1B[0m — ${maintainers.length} maintainer${maintainers.length === 1 ? "" : "s"}`,
-  );
-  consola.log("");
-
+/**
+ * One maintainer per line, their page indented under them.
+ *
+ * @param name - Package name.
+ * @param maintainers - Who the registry lists.
+ * @returns {string[]} The lines, without colors.
+ */
+export function maintainerLines(name: string, maintainers: readonly Maintainer[]): string[] {
+  const lines = [
+    `${sanitizeLine(name)}: ${maintainers.length} maintainer${maintainers.length === 1 ? "" : "s"}`,
+    "",
+  ];
   for (const maintainer of maintainers) {
-    consola.log(`  ${formatMaintainer(maintainer).join(" ")}`);
-    if (maintainer.url) consola.log(`    \x1B[90m${maintainer.url}\x1B[0m`);
+    lines.push(sanitizeLine(formatMaintainer(maintainer).join(" ")));
+    if (maintainer.url) lines.push(`  ${sanitizeLine(maintainer.url)}`);
   }
-  consola.log("");
+  return lines;
 }
 
 function formatMaintainer(maintainer: Readonly<Maintainer>): string[] {
   const displayName = maintainer.name || maintainer.login || "unknown";
   const parts = [displayName];
 
-  if (maintainer.login && maintainer.login !== displayName) {
-    parts.push(`\x1B[90m(${maintainer.login})\x1B[0m`);
-  }
-  if (maintainer.email) parts.push(`\x1B[90m<${maintainer.email}>\x1B[0m`);
-  if (maintainer.role) parts.push(`\x1B[36m[${maintainer.role}]\x1B[0m`);
+  if (maintainer.login && maintainer.login !== displayName) parts.push(`(${maintainer.login})`);
+  if (maintainer.email) parts.push(`<${maintainer.email}>`);
+  if (maintainer.role) parts.push(`[${maintainer.role}]`);
 
   return parts;
+}
+
+/**
+ * `registries maintainers`: who the registry says owns the package.
+ *
+ * @param args - The package and the cache switch.
+ * @returns {Promise<ToolResult<Maintainer[] | undefined>>} The list over the maintainers.
+ */
+export function maintainers(args: LookupArgs): Promise<ToolResult<Maintainer[] | undefined>> {
+  return answer(async () => {
+    const [reg, name] = await resolvePURL(args.purl, args.cache);
+    const found = await reg.fetchMaintainers(name);
+    return linesResult(maintainerLines(name, found), found);
+  });
 }

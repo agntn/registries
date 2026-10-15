@@ -23,7 +23,7 @@ test/
 | Normalization tests             | `test/unit/license.test.ts`, `test/unit/repository.test.ts`       | Canonical output normalization                      |
 | Error-type expectations         | `test/unit/errors.test.ts`                                        | Custom error classes                                |
 | Docs rate limit subject         | `test/unit/docs-rate-limit.test.ts`                               | Loads `docs/` with the root tsconfig                |
-| MCP listings and docs `/mcp`    | `test/unit/mcp.test.ts`                                           | One `docs/server/mcp/tools/` file per tool          |
+| MCP server over SDK 2 clients   | `test/unit/mcp.test.ts`                                           | Listing, refusals, the caller's HTTP client         |
 | MCP from the built bin          | `test/unit/cli.test.ts`                                           | Both modes and every guard, skipped without `dist/` |
 | Live smoke tests                | `test/e2e/smoke.test.ts`                                          | Network-sensitive ecosystem checks                  |
 

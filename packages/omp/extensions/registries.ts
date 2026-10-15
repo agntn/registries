@@ -1,125 +1,28 @@
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-import type { AgentToolResult, ExtensionAPI } from "@oh-my-pi/pi-coding-agent";
+import type { ExtensionAPI } from "@oh-my-pi/pi-coding-agent";
+import { registerOmpTools } from "@agntn/tools/omp";
 
-import type * as RegistryTools from "../../../dist/tool-operations.d.mts";
+type ToolsModule = typeof import("../../../src/tools.ts");
 
-const sourceModulePath = fileURLToPath(new URL("../../../src/tool-operations.ts", import.meta.url));
-let toolOperationsPromise: Promise<typeof RegistryTools> | undefined;
-
-function loadToolOperations(): Promise<typeof RegistryTools> {
-  toolOperationsPromise ??= (
-    existsSync(sourceModulePath)
-      ? import("../../../src/tool-operations.ts")
-      : import("../../../dist/tool-operations.mjs")
-  ) as Promise<typeof RegistryTools>;
-  return toolOperationsPromise;
+/**
+ * The tool definitions: checkout source, otherwise the package build. Both imports stay literal,
+ * because OMP resolves the bare imports of a module only when it can see the specifier.
+ * @returns {Promise<ToolsModule>} The module with `registriesTools`.
+ */
+function loadTools(): Promise<ToolsModule> {
+  return existsSync(fileURLToPath(new URL("../../../src/tools.ts", import.meta.url)))
+    ? import("../../../src/tools.ts")
+    : (import("../../../dist/tools.mjs") as Promise<ToolsModule>);
 }
 
-type RegistryToolResult = AgentToolResult<unknown>;
-
-export default function registriesExtension(pi: ExtensionAPI): void {
-  const { Type } = pi.typebox;
-  const PURL = Type.String({
-    minLength: 1,
-    maxLength: 2_048,
-    description: "Package URL, for example pkg:npm/lodash or pkg:pypi/requests@2.32.3",
-  });
-  const PURLParams = Type.Object({ purl: PURL }, { additionalProperties: false });
-  const VersionsParams = Type.Object(
-    {
-      purl: PURL,
-      limit: Type.Optional(
-        Type.Union([Type.Integer({ minimum: 1 }), Type.Literal("all")], {
-          description:
-            'How many of the newest versions to return, 20 when absent. Pass "all" for the whole release history.',
-        }),
-      ),
-    },
-    { additionalProperties: false },
-  );
-  const BulkPackagesParams = Type.Object(
-    {
-      purls: Type.Array(PURL, { minItems: 1, maxItems: 50 }),
-      concurrency: Type.Optional(Type.Integer({ minimum: 1, maximum: 50 })),
-    },
-    { additionalProperties: false },
-  );
-  const EmptyParams = Type.Object({}, { additionalProperties: false });
-
+/**
+ * Registers the registry tools; OMP validates the same schemas MCP, Pi and the AI SDK do.
+ * @param pi - OMP extension API.
+ */
+export default async function registriesExtension(pi: ExtensionAPI): Promise<void> {
+  const { registriesTools } = await loadTools();
   pi.setLabel("Registries");
-
-  pi.registerTool({
-    name: "registries_package",
-    label: "Registry Package",
-    description: "Fetch normalized metadata for one package URL",
-    parameters: PURLParams,
-    approval: "read",
-    async execute(_toolCallId, params, signal): Promise<RegistryToolResult> {
-      const { packageOperation } = await loadToolOperations();
-      return packageOperation(params, signal);
-    },
-  });
-
-  pi.registerTool({
-    name: "registries_versions",
-    label: "Registry Versions",
-    description:
-      'List versions for one package URL, newest first with undated ones last. Returns the 20 newest unless limit asks for more or "all"; omitted counts the ones left out.',
-    parameters: VersionsParams,
-    approval: "read",
-    async execute(_toolCallId, params, signal): Promise<RegistryToolResult> {
-      const { versionsOperation } = await loadToolOperations();
-      return versionsOperation(params, signal);
-    },
-  });
-
-  pi.registerTool({
-    name: "registries_dependencies",
-    label: "Registry Dependencies",
-    description: "List dependencies for a versioned package URL",
-    parameters: PURLParams,
-    approval: "read",
-    async execute(_toolCallId, params, signal): Promise<RegistryToolResult> {
-      const { dependenciesOperation } = await loadToolOperations();
-      return dependenciesOperation(params, signal);
-    },
-  });
-
-  pi.registerTool({
-    name: "registries_maintainers",
-    label: "Registry Maintainers",
-    description: "List normalized maintainers for one package URL",
-    parameters: PURLParams,
-    approval: "read",
-    async execute(_toolCallId, params, signal): Promise<RegistryToolResult> {
-      const { maintainersOperation } = await loadToolOperations();
-      return maintainersOperation(params, signal);
-    },
-  });
-
-  pi.registerTool({
-    name: "registries_bulk_packages",
-    label: "Registry Bulk Packages",
-    description: "Fetch normalized metadata for up to 50 package URLs",
-    parameters: BulkPackagesParams,
-    approval: "read",
-    async execute(_toolCallId, params, signal): Promise<RegistryToolResult> {
-      const { bulkPackagesOperation } = await loadToolOperations();
-      return bulkPackagesOperation(params, signal);
-    },
-  });
-
-  pi.registerTool({
-    name: "registries_ecosystems",
-    label: "Registry Ecosystems",
-    description: "List package ecosystems registered by this package",
-    parameters: EmptyParams,
-    approval: "read",
-    async execute(): Promise<RegistryToolResult> {
-      const { ecosystemsOperation } = await loadToolOperations();
-      return ecosystemsOperation();
-    },
-  });
+  registerOmpTools(pi, registriesTools(), { Text: pi.pi.Text });
 }
