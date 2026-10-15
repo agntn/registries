@@ -148,7 +148,7 @@ docs/                # Docus site: guide, registry pages, live lookup explorer a
 
 ## Project Notes
 
-- Node floor: `>=22.6.0` — modern syntax is expected.
+- Node floor: `>=26`, so modern syntax is expected.
 - Build: `obuild` (not tsc). `tsc` is typecheck-only (`noEmit`).
 - Release: tags `v*` trigger publish workflow with `pnpm publish --no-git-checks`.
 - Bulk fetch helpers skip failed packages instead of failing all — this is intentional.

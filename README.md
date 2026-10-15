@@ -23,7 +23,7 @@ Everything longer than this file is at [registries.agntn.dev](https://registries
 - 🔁 **Retries you don't write.** Five of them, exponential backoff, `Retry-After` respected when a registry says 429.
 - 📚 **Bulk that shrugs.** Fifteen packages at a time, and one that fails is just missing from the answer, not an exception for everyone else.
 - 🤖 **Library, CLI, AI SDK, MCP, Pi and OMP.** Six read-only tools on the agent side, same code behind all of them.
-- 🪶 **ESM only.** [obuild](https://github.com/unjs/obuild), no CommonJS, Node.js 22.6 or newer.
+- 🪶 **ESM only.** [obuild](https://github.com/unjs/obuild), no CommonJS, Node.js 26 or newer.
 
 ## 📦 Install
 
@@ -31,7 +31,7 @@ Everything longer than this file is at [registries.agntn.dev](https://registries
 pnpm add @agntn/registries
 ```
 
-Node.js 22.6 or newer. `ai` and `zod` only if you want the AI SDK tool, nothing else touches them:
+Node.js 26 or newer. `ai` and `zod` only if you want the AI SDK tool, nothing else touches them:
 
 ```bash
 pnpm add ai zod
