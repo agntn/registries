@@ -42,4 +42,13 @@ describe("build config", () => {
   it("should ship no source maps", () => {
     expect(buildConfig.entries?.[0]).toMatchObject({ dts: { sourcemap: false } });
   });
+
+  /** The extension tests read their types from dist, so a fresh clone has to build first. */
+  it("should build before typechecking the tests", () => {
+    const steps = manifest.scripts.typecheck.split(" && ");
+
+    expect(steps.slice(0, steps.indexOf("tsc -p test/tsconfig.json --noEmit"))).toContain(
+      "pnpm build",
+    );
+  });
 });
