@@ -28,8 +28,8 @@
   },
   "files": [
     "dist",
-    "packages/pi/extensions",
-    "packages/omp/extensions"
+    "extensions/pi",
+    "extensions/omp"
   ],
   "type": "module",
   "sideEffects": false,
@@ -135,12 +135,12 @@
   },
   "omp": {
     "extensions": [
-      "./packages/omp/extensions/registries.ts"
+      "./extensions/omp/registries.ts"
     ]
   },
   "pi": {
     "extensions": [
-      "./packages/pi/extensions/registries.ts"
+      "./extensions/pi/registries.ts"
     ]
   }
 }

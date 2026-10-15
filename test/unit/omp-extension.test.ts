@@ -1,7 +1,7 @@
 import type { TSchema } from "typebox";
 import { Value } from "typebox/value";
 import type { ExtensionAPI, ExtensionContext, ToolDefinition } from "@oh-my-pi/pi-coding-agent";
-import registriesExtension from "../../packages/omp/extensions/registries.ts";
+import registriesExtension from "../../extensions/omp/registries.ts";
 import { registriesTools } from "../../src/tools.ts";
 
 type OmpTool = ToolDefinition;
