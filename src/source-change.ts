@@ -16,15 +16,15 @@ export function lastSourceChange(directory: string): number {
 }
 
 /**
- * Snapshots `directory` and tells later whether it changed, a tree gone mid-scan included.
+ * Tells whether anything under `directory` changed after `since`, a tree gone mid-scan included.
  * @param directory - The source tree the server loads from.
- * @returns {() => boolean} Whether the tree changed since the snapshot.
+ * @param since - Epoch milliseconds from before the first module of that tree loaded.
+ * @returns {() => boolean} Whether the tree changed since then.
  */
-export function sourceChangeCheck(directory: string): () => boolean {
-  const loaded = lastSourceChange(directory);
+export function sourceChangeCheck(directory: string, since: number): () => boolean {
   return () => {
     try {
-      return lastSourceChange(directory) !== loaded;
+      return lastSourceChange(directory) > since;
     } catch {
       return true;
     }

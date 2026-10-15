@@ -211,12 +211,13 @@ const RESTART = "src/ changed under this server, restart it to load the new code
 
 /**
  * Cached modules plus adapters imported after a pull make a mix nobody wrote. The bundle can't.
+ * Measured from the process start, so a pull that lands while `src/` is still loading counts too.
  * @returns {Promise<(() => boolean) | undefined>} Whether `src/` changed, or nothing to watch.
  */
 async function watchSource(): Promise<(() => boolean) | undefined> {
   if (!import.meta.url.endsWith(".ts")) return undefined;
   const { sourceChangeCheck } = await import("./source-change.ts");
-  return sourceChangeCheck(import.meta.dirname);
+  return sourceChangeCheck(import.meta.dirname, performance.timeOrigin);
 }
 
 /**

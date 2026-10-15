@@ -236,6 +236,26 @@ describe.skipIf(!existsSync(join(root, "dist/cli.mjs")))(
       }
     });
 
+    it("should refuse calls when a pull lands while src/ is still loading", async () => {
+      const checkout = copyCheckout(tmpdir());
+      symlinkSync(join(root, "node_modules"), join(checkout, "node_modules"), "dir");
+      /** A module of the static graph writes into `src/` as it loads, the way a pull would. */
+      const info = join(checkout, "src/server-info.ts");
+      writeFileSync(
+        info,
+        `import { writeFileSync } from "node:fs";\nwriteFileSync(new URL("./pulled.ts", import.meta.url), "export {};\\n");\n${readFileSync(info, "utf8")}`,
+      );
+      const client = await connect(checkout);
+      try {
+        expect(
+          await client.callTool({ name: "registries_ecosystems", arguments: {} }),
+        ).toMatchObject(refused);
+      } finally {
+        await client.close();
+        rmSync(checkout, { recursive: true, force: true });
+      }
+    });
+
     it("should refuse whatever a call returns once a pull lands mid-call", async () => {
       const checkout = copyCheckout(tmpdir());
       symlinkSync(join(root, "node_modules"), join(checkout, "node_modules"), "dir");
