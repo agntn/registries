@@ -220,7 +220,7 @@ async function watchSource(): Promise<(() => boolean) | undefined> {
 }
 
 /**
- * Run from `src/`, it refuses calls once that tree changes, and checks again when a tool fails.
+ * Run from `src/`, it refuses calls once that tree changes, checked before and after every call.
  * @returns {Server} Unconnected MCP server.
  */
 export function createMcpServer(): Server {
@@ -237,7 +237,7 @@ export function createMcpServer(): Server {
       request.params.arguments ?? {},
       extra.signal,
     );
-    return result.isError === true && changed?.() ? errorResult(RESTART) : result;
+    return changed?.() ? errorResult(RESTART) : result;
   });
 
   return server;

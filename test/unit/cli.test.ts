@@ -236,7 +236,7 @@ describe.skipIf(!existsSync(join(root, "dist/cli.mjs")))(
       }
     });
 
-    it("should blame a pull that lands mid-call for the failure, not the tool", async () => {
+    it("should refuse whatever a call returns once a pull lands mid-call", async () => {
       const checkout = copyCheckout(tmpdir());
       symlinkSync(join(root, "node_modules"), join(checkout, "node_modules"), "dir");
       /** The executor writes into `src/` on every call and throws when the server says so. */
@@ -250,12 +250,14 @@ describe.skipIf(!existsSync(join(root, "dist/cli.mjs")))(
   return jsonResult({ ecosystems: ecosystems().sort() });`,
         )}`,
       );
-      const kept = await connect(checkout);
+      /** A lazy adapter import may have read the pulled tree, so even a success isn't trusted. */
+      const succeeding = await connect(checkout);
       try {
-        const answer = await kept.callTool({ name: "registries_ecosystems", arguments: {} });
-        expect(answer.isError).not.toBe(true);
+        expect(
+          await succeeding.callTool({ name: "registries_ecosystems", arguments: {} }),
+        ).toMatchObject(refused);
       } finally {
-        await kept.close();
+        await succeeding.close();
       }
       const failing = await connect(checkout, { REGISTRIES_TEST_FAIL: "1" });
       try {
