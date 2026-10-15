@@ -226,7 +226,7 @@ pnpm install
 pnpm dev:prepare   # obuild --stub, src/ changes show up without a build
 pnpm fmt           # oxlint --fix and oxfmt
 pnpm lint          # builds first, then oxlint and oxfmt --check
-pnpm typecheck     # library and tests, then a build and both extensions
+pnpm typecheck     # library, then a build, so the tests and extensions find dist/
 pnpm test:run
 pnpm build         # obuild
 pnpm docs          # the Docus site on :3000
