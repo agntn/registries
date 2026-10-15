@@ -154,5 +154,6 @@ docs/                # Docus site: guide, registry pages, live lookup explorer a
 - Bulk fetch helpers skip failed packages instead of failing all — this is intentional.
 - Cache is optional decorator, never mandatory in core flows.
 - e2e smoke tests are network-sensitive — failures may be transient.
+- In a checkout `dist/cli.mjs mcp` serves `src/` (`REGISTRIES_DIST=1` keeps the bundle), and that server refuses tool calls once `src/` changes under it. A change to `src/cli.ts` itself still needs `pnpm build`. `test/unit/cli.test.ts` covers both modes and every guard, and skips them without `dist/`.
 - `build.config.ts` reads `src/registries/` and makes every adapter its own entry (`dist/registries/<name>.mjs`, exported as `./registries/*`), so the manifest's `import()` resolves to a stable file and `dist/index.mjs` never pulls an adapter in statically.
 - `typebox` is an optional peer with the `"*"` range Pi 0.99 asks for, since Pi warns on every load of a package that lists it in `dependencies` (#132); the exact pin sits in `devDependencies`. Pi supplies its own copy to the extension, and the build inlines one into `dist` for the CLI and the MCP server, `typebox/value` included. `test/unit/build-config.test.ts` guards both.

@@ -14,17 +14,18 @@ test/
 
 ## WHERE TO LOOK
 
-| Task                            | Location                                                          | Notes                                        |
-| ------------------------------- | ----------------------------------------------------------------- | -------------------------------------------- |
-| PURL contract tests             | `test/unit/purl.test.ts`                                          | Parse/build validation matrix                |
-| Registry factory + plugin tests | `test/unit/registry.test.ts`, `test/unit/registries.test.ts`      | Registration + per-ecosystem behavior        |
-| Lazy adapter loading            | `test/unit/lazy-loading.test.ts`                                  | What `create()` imports, `sideEffects` claim |
-| Cache behavior tests            | `test/unit/lockfile.test.ts`, `test/unit/cached-registry.test.ts` | Freshness, TTL, integrity, wrapper behavior  |
-| Normalization tests             | `test/unit/license.test.ts`, `test/unit/repository.test.ts`       | Canonical output normalization               |
-| Error-type expectations         | `test/unit/errors.test.ts`                                        | Custom error classes                         |
-| Docs rate limit subject         | `test/unit/docs-rate-limit.test.ts`                               | Loads `docs/` with the root tsconfig         |
-| MCP listings and docs `/mcp`    | `test/unit/mcp.test.ts`                                           | One `docs/server/mcp/tools/` file per tool   |
-| Live smoke tests                | `test/e2e/smoke.test.ts`                                          | Network-sensitive ecosystem checks           |
+| Task                            | Location                                                          | Notes                                               |
+| ------------------------------- | ----------------------------------------------------------------- | --------------------------------------------------- |
+| PURL contract tests             | `test/unit/purl.test.ts`                                          | Parse/build validation matrix                       |
+| Registry factory + plugin tests | `test/unit/registry.test.ts`, `test/unit/registries.test.ts`      | Registration + per-ecosystem behavior               |
+| Lazy adapter loading            | `test/unit/lazy-loading.test.ts`                                  | What `create()` imports, `sideEffects` claim        |
+| Cache behavior tests            | `test/unit/lockfile.test.ts`, `test/unit/cached-registry.test.ts` | Freshness, TTL, integrity, wrapper behavior         |
+| Normalization tests             | `test/unit/license.test.ts`, `test/unit/repository.test.ts`       | Canonical output normalization                      |
+| Error-type expectations         | `test/unit/errors.test.ts`                                        | Custom error classes                                |
+| Docs rate limit subject         | `test/unit/docs-rate-limit.test.ts`                               | Loads `docs/` with the root tsconfig                |
+| MCP listings and docs `/mcp`    | `test/unit/mcp.test.ts`                                           | One `docs/server/mcp/tools/` file per tool          |
+| MCP from the built bin          | `test/unit/cli.test.ts`                                           | Both modes and every guard, skipped without `dist/` |
+| Live smoke tests                | `test/e2e/smoke.test.ts`                                          | Network-sensitive ecosystem checks                  |
 
 ## CONVENTIONS
 

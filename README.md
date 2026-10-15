@@ -232,6 +232,8 @@ pnpm build         # obuild
 pnpm docs          # the Docus site on :3000
 ```
 
+Point an MCP client at `node <checkout>/dist/cli.mjs mcp` and it serves `src/`, so an edit costs a server restart, not a rebuild. Forget the restart and the next tool call tells you so, instead of quietly running half old, half new code. `REGISTRIES_DIST=1` pins it to the bundle.
+
 ## 💛 Thanks
 
 Anthropic and OpenAI both run a program for open source, [Claude for Open Source](https://claude.com/contact-sales/claude-for-oss) and [Codex for Open Source](https://developers.openai.com/community/codex-for-oss), and this package is one of the things that came out of them <3
