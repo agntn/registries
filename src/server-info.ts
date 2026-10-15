@@ -1,4 +1,4 @@
-import type { Implementation } from "@modelcontextprotocol/sdk/types.js";
+import type { McpServerInfo } from "@agntn/tools/mcp";
 import { version } from "./version.ts";
 
 /** How both MCP servers introduce themselves, so a connector card has more than a name on it. */
@@ -11,4 +11,4 @@ export const serverInfo = {
     { src: "https://registries.agntn.dev/favicon.svg", mimeType: "image/svg+xml", sizes: ["any"] },
     { src: "https://registries.agntn.dev/icon-512.png", mimeType: "image/png", sizes: ["512x512"] },
   ],
-} satisfies Implementation;
+} satisfies McpServerInfo;

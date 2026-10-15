@@ -11,7 +11,7 @@ src/
 |- core/        # primitives and shared contracts
 |- registries/  # ecosystem implementations
 |- cache/       # storage + freshness metadata
-|- commands/    # CLI command handlers
+|- commands/    # what the CLI's own commands run
 |- index.ts     # package public API barrel
 |- helpers.ts   # high-level PURL helpers
 |- cli.ts       # executable command root
@@ -20,13 +20,13 @@ src/
 
 ## WHERE TO LOOK
 
-| Task                  | Location                           | Notes                                                            |
-| --------------------- | ---------------------------------- | ---------------------------------------------------------------- |
-| Extend public exports | `src/index.ts`                     | Keep grouping order stable (Core, Errors, Helpers, Types, Cache) |
-| Add convenience API   | `src/helpers.ts`                   | Wrap `createFromPURL`; preserve normalization path               |
-| Add CLI command       | `src/commands/*.ts` + `src/cli.ts` | Command file + dynamic import wiring                             |
-| Add ecosystem adapter | `src/registries/*.ts`              | Class file + entry in the `builtins` manifest, no `register()`   |
-| Change shared models  | `src/core/types.ts`                | Impacts all registries and helpers                               |
+| Task                  | Location                                    | Notes                                                            |
+| --------------------- | ------------------------------------------- | ---------------------------------------------------------------- |
+| Extend public exports | `src/index.ts`                              | Keep grouping order stable (Core, Errors, Helpers, Types, Cache) |
+| Add convenience API   | `src/helpers.ts`                            | Wrap `createFromPURL`; preserve normalization path               |
+| Add CLI command       | `src/cli-commands.ts` + `src/commands/*.ts` | `defineTool` with a `cli` hint, its code imported in `execute`   |
+| Add ecosystem adapter | `src/registries/*.ts`                       | Class file + entry in the `builtins` manifest, no `register()`   |
+| Change shared models  | `src/core/types.ts`                         | Impacts all registries and helpers                               |
 
 ## CONVENTIONS
 

@@ -1,60 +1,50 @@
-import { defineCommand } from "citty";
-import consola from "consola";
+import { sanitizeLine, type ToolResult } from "@agntn/tools";
+import type { Version } from "../core/types.ts";
 import { selectRecentVersions } from "../helpers.ts";
+import { DEFAULT_VERSIONS_LIMIT } from "../tool-limits.ts";
+import { answer, linesResult, resolvePURL, type LookupArgs } from "./shared.ts";
 
-import { sharedArgs, resolvePURL, withErrorHandling } from "./shared.ts";
+/** `registries versions` takes a cap too, or `all` for the whole history. */
+export interface VersionsArgs extends LookupArgs {
+  readonly limit?: number | "all";
+}
 
-export default defineCommand({
-  meta: {
-    name: "versions",
-    description: "List package versions",
-  },
-  args: {
-    ...sharedArgs,
-    purl: {
-      type: "positional",
-      description: "Package PURL (e.g. pkg:npm/lodash, cargo/serde)",
-      required: true,
-    },
-    limit: {
-      type: "string",
-      alias: "l",
-      description: "Max versions to show",
-      default: "20",
-    },
-  },
-  async run({ args }) {
-    await withErrorHandling(async () => {
-      const [reg, name] = await resolvePURL(args.purl, args.cache);
-      const versions = await reg.fetchVersions(name);
-      const limit = Number.parseInt(args.limit, 10) || 20;
-      const shown = selectRecentVersions(versions, limit);
+/**
+ * One line per release, newest first, and a note on how many the cap left out.
+ *
+ * @param name - Package name.
+ * @param all - Every version the registry knows.
+ * @param shown - The ones that made the cut.
+ * @returns {string[]} The lines, without colors.
+ */
+export function versionLines(
+  name: string,
+  all: readonly Version[],
+  shown: readonly Version[],
+): string[] {
+  const lines = [`${sanitizeLine(name)}: ${all.length} version${all.length === 1 ? "" : "s"}`, ""];
+  for (const version of shown) {
+    const status = version.status ? ` [${sanitizeLine(version.status)}]` : "";
+    const date = version.publishedAt ? `  ${version.publishedAt.toISOString().slice(0, 10)}` : "";
+    lines.push(`${sanitizeLine(version.number)}${status}${date}`);
+  }
+  const omitted = all.length - shown.length;
+  if (omitted > 0) lines.push("", `... and ${omitted} more (use --limit to show more)`);
+  return lines;
+}
 
-      if (args.json) {
-        console.log(JSON.stringify(shown, null, 2));
-        return;
-      }
-
-      consola.log("");
-      consola.log(
-        `  \x1B[1m${name}\x1B[0m — ${versions.length} version${versions.length === 1 ? "" : "s"}`,
-      );
-      consola.log("");
-
-      for (const v of shown) {
-        const status = v.status ? ` \x1B[33m[${v.status}]\x1B[0m` : "";
-        const date = v.publishedAt
-          ? `  \x1B[90m${v.publishedAt.toISOString().slice(0, 10)}\x1B[0m`
-          : "";
-        consola.log(`  ${v.number}${status}${date}`);
-      }
-
-      if (versions.length > limit) {
-        consola.log(
-          `\n  \x1B[90m... and ${versions.length - limit} more (use --limit to show more)\x1B[0m`,
-        );
-      }
-      consola.log("");
-    });
-  },
-});
+/**
+ * `registries versions`: the newest releases, the shown ones as an array under `--json`.
+ *
+ * @param args - The package, the cap and the cache switch.
+ * @returns {Promise<ToolResult<Version[] | undefined>>} The list over the shown versions.
+ */
+export function versions(args: VersionsArgs): Promise<ToolResult<Version[] | undefined>> {
+  return answer(async () => {
+    const [reg, name] = await resolvePURL(args.purl, args.cache);
+    const all = await reg.fetchVersions(name);
+    const limit = args.limit === "all" ? Number.POSITIVE_INFINITY : args.limit;
+    const shown = selectRecentVersions(all, limit ?? DEFAULT_VERSIONS_LIMIT);
+    return linesResult(versionLines(name, all, shown), shown);
+  });
+}

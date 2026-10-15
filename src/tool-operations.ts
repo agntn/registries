@@ -1,8 +1,9 @@
+import type { ToolResult } from "@agntn/tools";
 import type { Client } from "./core/client.ts";
 import { InvalidPURLError, PkioError } from "./core/errors.ts";
 import { parsePURL } from "./core/purl.ts";
 import { ecosystems } from "./core/registry.ts";
-import type { Package, Version } from "./core/types.ts";
+import type { Dependency, Maintainer, Package, Version } from "./core/types.ts";
 import {
   bulkFetchPackages,
   fetchDependenciesFromPURL,
@@ -12,17 +13,21 @@ import {
   selectRecentVersions,
 } from "./helpers.ts";
 
-export const MAX_PURL_LENGTH = 2_048;
-export const MAX_BULK_PACKAGES = 50;
-export const DEFAULT_BULK_CONCURRENCY = 15;
-export const MAX_BULK_CONCURRENCY = 50;
-export const DEFAULT_VERSIONS_LIMIT = 20;
+import {
+  DEFAULT_BULK_CONCURRENCY,
+  DEFAULT_VERSIONS_LIMIT,
+  MAX_BULK_CONCURRENCY,
+  MAX_BULK_PACKAGES,
+  MAX_PURL_LENGTH,
+} from "./tool-limits.ts";
 
-export interface ToolResult<T> {
-  content: Array<{ type: "text"; text: string }>;
-  details: T;
-  isError?: boolean;
-}
+export {
+  DEFAULT_BULK_CONCURRENCY,
+  DEFAULT_VERSIONS_LIMIT,
+  MAX_BULK_CONCURRENCY,
+  MAX_BULK_PACKAGES,
+  MAX_PURL_LENGTH,
+};
 
 export interface PURLParams {
   readonly purl: string;
@@ -45,9 +50,16 @@ export interface BulkPackagesParams {
   readonly concurrency?: number;
 }
 
-function jsonResult<T>(details: T): ToolResult<T> {
+/**
+ * The answer as compact JSON for the model, the details beside it for the harness.
+ *
+ * @param details - What the harness gets.
+ * @param shown - What the text spells, the details themselves unless a list sits inside them.
+ * @returns {ToolResult<T>} One text block over the details.
+ */
+function jsonResult<T>(details: T, shown: unknown = details): ToolResult<T> {
   return {
-    content: [{ type: "text", text: JSON.stringify(details) }],
+    content: [{ type: "text", text: JSON.stringify(shown) }],
     details,
   };
 }
@@ -145,18 +157,20 @@ export async function dependenciesOperation(
   params: Readonly<PURLParams>,
   signal?: AbortSignal,
   client?: Client,
-) {
+): Promise<ToolResult<{ dependencies: Dependency[] }>> {
   assertPURL(params.purl);
-  return jsonResult(await fetchDependenciesFromPURL(params.purl, signal, client));
+  const dependencies = await fetchDependenciesFromPURL(params.purl, signal, client);
+  return jsonResult({ dependencies }, dependencies);
 }
 
 export async function maintainersOperation(
   params: Readonly<PURLParams>,
   signal?: AbortSignal,
   client?: Client,
-) {
+): Promise<ToolResult<{ maintainers: Maintainer[] }>> {
   assertPURL(params.purl);
-  return jsonResult(await fetchMaintainersFromPURL(params.purl, signal, client));
+  const maintainers = await fetchMaintainersFromPURL(params.purl, signal, client);
+  return jsonResult({ maintainers }, maintainers);
 }
 
 export async function bulkPackagesOperation(

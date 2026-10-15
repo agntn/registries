@@ -1,97 +1,59 @@
-import { defineCommand } from "citty";
-import consola from "consola";
-import { sharedArgs, resolvePURL, withErrorHandling } from "./shared.ts";
-
-export default defineCommand({
-  meta: {
-    name: "deps",
-    description: "List package dependencies",
-  },
-  args: {
-    ...sharedArgs,
-    purl: {
-      type: "positional",
-      description: "Package PURL with version (e.g. pkg:npm/lodash@4.17.21, cargo/serde@1.0)",
-      required: true,
-    },
-  },
-  async run({ args }) {
-    await withErrorHandling(async () => {
-      const [reg, name, version] = await resolvePURL(args.purl, args.cache);
-
-      if (!version) {
-        // Try to resolve latest version
-        const pkg = await reg.fetchPackage(name);
-        if (!pkg.latestVersion) {
-          consola.error(
-            "PURL must include a version for dependency lookup, and no latest version found.",
-          );
-          consola.info("Example: pkg:npm/lodash@4.17.21");
-          process.exit(1);
-        }
-        if (!args.json) {
-          consola.info(`No version specified, using latest: ${pkg.latestVersion}`);
-        }
-        const deps = await reg.fetchDependencies(name, pkg.latestVersion);
-        outputDeps(name, pkg.latestVersion, deps, args.json);
-        return;
-      }
-
-      const deps = await reg.fetchDependencies(name, version);
-      outputDeps(name, version, deps, args.json);
-    });
-  },
-});
-
+import { sanitizeLine, type ToolResult } from "@agntn/tools";
+import { PkioError } from "../core/errors.ts";
 import type { Dependency } from "../core/types.ts";
+import { answer, linesResult, resolvePURL, type LookupArgs } from "./shared.ts";
 
-function outputDeps(
+/**
+ * Dependencies grouped by scope, runtime first as the registry lists them.
+ *
+ * @param name - Package name.
+ * @param version - The release they belong to.
+ * @param deps - The dependencies.
+ * @returns {string[]} The lines, without colors.
+ */
+export function dependencyLines(
   name: string,
   version: string,
   deps: readonly Dependency[],
-  json: boolean,
-): void {
-  if (json) {
-    console.log(JSON.stringify(deps, null, 2));
-    return;
-  }
-
-  consola.log("");
-  consola.log(
-    `  \x1B[1m${name}@${version}\x1B[0m — ${deps.length} dependenc${deps.length === 1 ? "y" : "ies"}`,
-  );
-  consola.log("");
-
-  const byScope = groupByScope(deps);
-
-  const scopeColors: Record<string, string> = {
-    runtime: "\x1B[32m",
-    development: "\x1B[33m",
-    build: "\x1B[35m",
-    test: "\x1B[36m",
-    optional: "\x1B[90m",
-  };
-
-  for (const [scope, scopeDeps] of byScope) {
-    const color = scopeColors[scope] ?? "\x1B[0m";
-    consola.log(`  ${color}${scope}\x1B[0m (${scopeDeps.length})`);
+): string[] {
+  const head = sanitizeLine(`${name}@${version}`);
+  const lines = [`${head}: ${deps.length} dependenc${deps.length === 1 ? "y" : "ies"}`];
+  for (const [scope, scopeDeps] of Map.groupBy(deps, (dep) => dep.scope || "runtime")) {
+    lines.push("", `${sanitizeLine(scope)} (${scopeDeps.length})`);
     for (const dep of scopeDeps) {
-      const opt = dep.optional ? " \x1B[90m(optional)\x1B[0m" : "";
-      consola.log(`    ${dep.name} \x1B[90m${dep.requirements}\x1B[0m${opt}`);
+      const words = [dep.name, dep.requirements, dep.optional ? "(optional)" : ""];
+      lines.push(`  ${sanitizeLine(words.filter(Boolean).join(" "))}`);
     }
-    consola.log("");
   }
+  return lines;
 }
 
-function groupByScope(deps: readonly Dependency[]): Map<string, Dependency[]> {
-  const byScope = new Map<string, Dependency[]>();
-
-  for (const dep of deps) {
-    const scope = dep.scope || "runtime";
-    const scopeDeps = byScope.get(scope) ?? [];
-    scopeDeps.push(dep);
-    byScope.set(scope, scopeDeps);
-  }
-
-  return byScope;
+/**
+ * `registries deps`: one release's dependencies, the latest when the PURL names none.
+ *
+ * @param args - The package and the cache switch.
+ * @returns {Promise<ToolResult<Dependency[] | undefined>>} The list over the dependencies.
+ */
+export function deps(args: LookupArgs): Promise<ToolResult<Dependency[] | undefined>> {
+  return answer(async () => {
+    const [reg, name, version] = await resolvePURL(args.purl, args.cache);
+    if (version) {
+      const found = await reg.fetchDependencies(name, version);
+      return linesResult(dependencyLines(name, version, found), found);
+    }
+    const latest = (await reg.fetchPackage(name)).latestVersion;
+    if (!latest) {
+      throw new PkioError(
+        "PURL must include a version for dependency lookup, and no latest version found. Example: pkg:npm/lodash@4.17.21",
+      );
+    }
+    const found = await reg.fetchDependencies(name, latest);
+    return linesResult(
+      [
+        `No version specified, using latest: ${sanitizeLine(latest)}`,
+        ...dependencyLines(name, latest, found),
+      ],
+      found,
+    );
+  });
 }

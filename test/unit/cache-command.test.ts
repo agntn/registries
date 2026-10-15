@@ -1,10 +1,7 @@
-import { defineCommand, runCommand } from "citty";
+import { createCli } from "@agntn/tools/cli";
 import { createStorage } from "unstorage";
 import { configureStorage, disposeStorage } from "../../src/cache/storage.ts";
-import info from "../../src/commands/info.ts";
-import versions from "../../src/commands/versions.ts";
-import deps from "../../src/commands/deps.ts";
-import maintainers from "../../src/commands/maintainers.ts";
+import { registriesCli } from "../../src/cli-run.ts";
 
 const version = {
   name: "example",
@@ -19,7 +16,7 @@ const payload = {
   maintainers: [{ name: "publisher", email: "publisher@example.com" }],
 };
 
-const cli = defineCommand({ subCommands: { info, versions, deps, maintainers } });
+const cli = createCli(registriesCli());
 const commands = [
   { name: "info", command: "info", purl: "npm/example", requests: 1 },
   { name: "versions", command: "versions", purl: "npm/example", requests: 1 },
@@ -37,7 +34,7 @@ describe.each(commands)("$name cache flags", ({ command, purl, requests }) => {
     configureStorage(storage);
     fetch.mockClear();
     vi.stubGlobal("fetch", fetch);
-    vi.spyOn(console, "log").mockImplementation(() => undefined);
+    vi.spyOn(process.stdout, "write").mockImplementation(() => true);
   });
 
   afterEach(async () => {
@@ -50,7 +47,7 @@ describe.each(commands)("$name cache flags", ({ command, purl, requests }) => {
     const read = vi.spyOn(storage, "getItem");
     const write = vi.spyOn(storage, "setItem");
 
-    await runCommand(cli, { rawArgs: [command, purl, "--json", "--no-cache"] });
+    await cli.run([command, purl, "--json", "--no-cache"]);
 
     expect(fetch).toHaveBeenCalledTimes(requests);
     expect(read).not.toHaveBeenCalled();
@@ -62,15 +59,15 @@ describe.each(commands)("$name cache flags", ({ command, purl, requests }) => {
     "should reuse cached results with flags $flags and bypass them with --no-cache",
     async ({ flags }) => {
       const rawArgs = [command, purl, "--json", ...flags];
-      await runCommand(cli, { rawArgs });
-      await runCommand(cli, { rawArgs });
+      await cli.run(rawArgs);
+      await cli.run(rawArgs);
 
       expect(fetch).toHaveBeenCalledTimes(requests);
       expect(await storage.getKeys()).not.toEqual([]);
 
       const read = vi.spyOn(storage, "getItem");
       const write = vi.spyOn(storage, "setItem");
-      await runCommand(cli, { rawArgs: [command, purl, "--json", "--no-cache"] });
+      await cli.run([command, purl, "--json", "--no-cache"]);
 
       expect(fetch).toHaveBeenCalledTimes(requests * 2);
       expect(read).not.toHaveBeenCalled();

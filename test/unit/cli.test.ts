@@ -13,8 +13,8 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+import { Client } from "@modelcontextprotocol/client";
+import { StdioClientTransport } from "@modelcontextprotocol/client/stdio";
 
 /* Runs `src/cli.ts` with stdout closed before the first write, the way `| head -1` leaves it. */
 async function withClosedStdout(...args: readonly string[]) {
@@ -198,16 +198,17 @@ describe.skipIf(!existsSync(join(root, "dist/cli.mjs")))(
       }
     });
 
-    it("should keep the bundle where typebox, which only dist inlines, is not installed", () => {
+    it("should serve the source on the production dependencies alone", () => {
       const production = copyCheckout(tmpdir());
       try {
         const dependencies = productionDependencies();
         expect(dependencies).not.toContain("typebox");
+        expect(dependencies).toContain("@agntn/tools");
         for (const name of dependencies) {
           mkdirSync(join(production, "node_modules", name, ".."), { recursive: true });
           symlinkSync(join(root, "node_modules", name), join(production, "node_modules", name));
         }
-        expect(serve(production)).toMatchObject(served("bundle"));
+        expect(serve(production)).toMatchObject(served("source"));
       } finally {
         rmSync(production, { recursive: true, force: true });
       }

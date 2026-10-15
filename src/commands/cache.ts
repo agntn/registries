@@ -1,82 +1,69 @@
-import { defineCommand } from "citty";
-import consola from "consola";
+import type { ToolResult } from "@agntn/tools";
 import { getCacheDir } from "../cache/paths.ts";
 import { clearStorage } from "../cache/storage.ts";
 import { readLockfile, writeLockfile, pruneStale } from "../cache/lockfile.ts";
+import { linesResult } from "./shared.ts";
 
-export default defineCommand({
-  meta: {
-    name: "cache",
-    description: "Manage the registries cache",
-  },
-  subCommands: {
-    clear: defineCommand({
-      meta: {
-        name: "clear",
-        description: "Remove all cached data",
-      },
-      async run() {
-        await clearStorage();
-        await writeLockfile({ version: 1, entries: {} });
-        consola.success("Cache cleared");
-      },
-    }),
-    path: defineCommand({
-      meta: {
-        name: "path",
-        description: "Show cache directory path",
-      },
-      run() {
-        console.log(getCacheDir());
-      },
-    }),
-    status: defineCommand({
-      meta: {
-        name: "status",
-        description: "Show cache status and entry count",
-      },
-      async run() {
-        const lockfile = await readLockfile();
-        const entries = Object.values(lockfile.entries);
-        const fresh = entries.filter((e) => {
-          const expiresAt = e.fetchedAt + e.ttl * 1000;
-          return Date.now() < expiresAt;
-        });
-        const stale = entries.length - fresh.length;
+/** What `registries cache` can do to the cache. */
+export type CacheAction = "clear" | "path" | "status" | "prune";
 
-        consola.log("");
-        consola.log(`  \x1B[1mCache status\x1B[0m`);
-        consola.log(`  \x1B[90mDirectory:\x1B[0m  ${getCacheDir()}`);
-        consola.log(
-          `  \x1B[90mEntries:\x1B[0m    ${entries.length} total, ${fresh.length} fresh, ${stale} stale`,
-        );
-        consola.log("");
+/** How full the cache is, by freshness and by ecosystem. */
+export interface CacheStatus {
+  readonly directory: string;
+  readonly total: number;
+  readonly fresh: number;
+  readonly stale: number;
+  readonly ecosystems: Record<string, number>;
+}
 
-        if (fresh.length > 0) {
-          // Group by ecosystem
-          const byEco = new Map<string, number>();
-          for (const e of fresh) {
-            const eco = e.key.split(":")[0]!;
-            byEco.set(eco, (byEco.get(eco) ?? 0) + 1);
-          }
-          for (const [eco, count] of byEco) {
-            consola.log(`  \x1B[36m${eco}\x1B[0m: ${count} cached`);
-          }
-          consola.log("");
-        }
-      },
-    }),
-    prune: defineCommand({
-      meta: {
-        name: "prune",
-        description: "Remove stale cache entries",
-      },
-      async run() {
-        const lockfile = await readLockfile();
-        const removed = pruneStale(lockfile);
-        await writeLockfile(lockfile);
-        consola.success(`Pruned ${removed} stale entries`);
-      },
-    }),
-  },
-});
+async function status(): Promise<ToolResult<CacheStatus>> {
+  const entries = Object.values((await readLockfile()).entries);
+  const now = Date.now();
+  const fresh = entries.filter((entry) => now < entry.fetchedAt + entry.ttl * 1000);
+  const ecosystems: Record<string, number> = {};
+  for (const entry of fresh) {
+    const ecosystem = entry.key.split(":")[0] ?? "";
+    ecosystems[ecosystem] = (ecosystems[ecosystem] ?? 0) + 1;
+  }
+  const details = {
+    directory: getCacheDir(),
+    total: entries.length,
+    fresh: fresh.length,
+    stale: entries.length - fresh.length,
+    ecosystems,
+  };
+  return linesResult(
+    [
+      "Cache status",
+      `Directory:  ${details.directory}`,
+      `Entries:    ${details.total} total, ${details.fresh} fresh, ${details.stale} stale`,
+      ...Object.entries(ecosystems).map(([name, count]) => `  ${name}: ${count} cached`),
+    ],
+    details,
+  );
+}
+
+/**
+ * `registries cache <action>`: clear it, find it, count it or drop what went stale.
+ *
+ * @param args - The action.
+ * @returns {Promise<ToolResult<unknown>>} What happened, in a line or a short report.
+ */
+export async function cache(args: { readonly action: CacheAction }): Promise<ToolResult<unknown>> {
+  switch (args.action) {
+    case "clear":
+      await clearStorage();
+      await writeLockfile({ version: 1, entries: {} });
+      return linesResult(["Cache cleared"], { cleared: true });
+    case "path":
+      return linesResult([getCacheDir()], { directory: getCacheDir() });
+    case "status":
+      return status();
+    case "prune": {
+      const lockfile = await readLockfile();
+      const removed = pruneStale(lockfile);
+      await writeLockfile(lockfile);
+      return linesResult([`Pruned ${removed} stale entries`], { removed });
+    }
+  }
+}

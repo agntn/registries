@@ -1,8 +1,8 @@
 interface:
   display_name: registries AI Tool
-  short_description: Integrate @agntn/registries packageTool into Vercel AI SDK apps for structured registry queries
+  short_description: Integrate the @agntn/registries tools into Vercel AI SDK apps for structured registry queries
   brand_color: "#3b82f6"
-  default_prompt: Set up packageTool for an AI agent that needs to query package registries
+  default_prompt: Set up the @agntn/registries tools for an AI agent that needs to query package registries
 
 policy:
   allow_implicit_invocation: false

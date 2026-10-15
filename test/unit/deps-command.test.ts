@@ -7,9 +7,7 @@ vi.mock("../../src/commands/shared.ts", async (importOriginal) => {
   return { ...actual, resolvePURL: mockResolvePURL };
 });
 
-import { runCommand } from "citty";
-import consola from "consola";
-import depsCommand from "../../src/commands/deps.ts";
+import { deps } from "../../src/commands/deps.ts";
 import type { Dependency } from "../../src/core/types.ts";
 
 const dependencies: Dependency[] = [
@@ -29,27 +27,21 @@ describe("deps command", () => {
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
     mockResolvePURL.mockReset();
   });
 
-  it("keeps JSON output parseable when the version is inferred", async () => {
-    const info = vi.spyOn(consola, "info").mockImplementation(() => undefined);
-    const output = vi.spyOn(console, "log").mockImplementation(() => undefined);
+  it("keeps the details to the dependencies when the version is inferred", async () => {
+    const result = await deps({ purl: "pkg:test/example", cache: false });
 
-    await runCommand(depsCommand, { rawArgs: ["pkg:test/example", "--json", "--no-cache"] });
-
-    const stdout = output.mock.calls.map(([value]) => String(value)).join("\n");
-    expect(JSON.parse(stdout)).toEqual(dependencies);
-    expect(info).not.toHaveBeenCalled();
+    expect(result.details).toEqual(dependencies);
   });
 
   it("keeps the inferred version notice in human output", async () => {
-    const info = vi.spyOn(consola, "info").mockImplementation(() => undefined);
-    vi.spyOn(consola, "log").mockImplementation(() => undefined);
+    const result = await deps({ purl: "pkg:test/example", cache: false });
+    const block = result.content[0];
 
-    await runCommand(depsCommand, { rawArgs: ["pkg:test/example", "--no-cache"] });
-
-    expect(info).toHaveBeenCalledWith("No version specified, using latest: 2.0.0");
+    expect(block?.type === "text" ? block.text.split("\n")[0] : "").toBe(
+      "No version specified, using latest: 2.0.0",
+    );
   });
 });

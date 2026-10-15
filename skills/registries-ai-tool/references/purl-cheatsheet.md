@@ -47,9 +47,9 @@ Composer vendors: use path separator:
 
 ## Operations That Require a Version
 
-The `dependencies` operation requires a version in the PURL:
+`dependenciesTool` requires a version in the PURL:
 
 - `pkg:npm/lodash@4.17.21` (works)
 - `pkg:npm/lodash` (fails for dependencies)
 
-All other operations work with or without a version.
+All other tools work with or without a version.

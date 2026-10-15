@@ -11,8 +11,6 @@ export default defineNuxtConfig({
   /** The subpath alias comes first: a plain prefix match on the package name would swallow it. */
   alias: {
     "@agntn/registries/registries": `${librarySource}registries/index.ts`,
-    /** The tool listings and the executor `registries mcp` serves, for the MCP server at /mcp. */
-    "@agntn/registries/mcp": `${librarySource}mcp.ts`,
     "@agntn/registries": `${librarySource}index.ts`,
   },
   devtools: { enabled: true },

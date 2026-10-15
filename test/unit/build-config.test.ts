@@ -1,4 +1,4 @@
-import type { BuildConfig } from "obuild";
+import { readdirSync, readFileSync } from "node:fs";
 import manifest from "../../package.json" with { type: "json" };
 import buildConfig from "../../build.config.ts";
 
@@ -16,26 +16,32 @@ const hostProvidedPackages = [
   "typebox",
 ];
 
-type RolldownConfigHook = NonNullable<NonNullable<BuildConfig["hooks"]>["rolldownConfig"]>;
+/* Every TypeScript file the package ships, as paths from the repo root. */
+function shippedSources(): string[] {
+  return ["src", "packages"].flatMap((dir) =>
+    readdirSync(new URL(`../../${dir}/`, import.meta.url), { recursive: true })
+      .map(String)
+      .filter((file) => file.endsWith(".ts"))
+      .map((file) => `${dir}/${file}`),
+  );
+}
 
 describe("build config", () => {
   it("should keep the packages Pi supplies out of dependencies", () => {
     expect(
       Object.keys(manifest.dependencies).filter((name) => hostProvidedPackages.includes(name)),
     ).toEqual([]);
-    expect(manifest.peerDependencies.typebox).toBe("*");
-    expect(manifest.peerDependenciesMeta.typebox).toEqual({ optional: true });
+    expect(Object.keys(manifest.peerDependencies)).not.toContain("typebox");
   });
 
-  it("should inline typebox and its subpaths into dist", async () => {
-    const config: Parameters<RolldownConfigHook>[0] = {
-      external: [/^#/, "node:fs", "unstorage", /^unstorage\//, "typebox", /^typebox\//],
-    };
-
-    /** SAFETY: the hook reads only the rolldown options, never the build context. */
-    await buildConfig.hooks?.rolldownConfig?.(config, {} as Parameters<RolldownConfigHook>[1]);
-
-    expect(config.external).toEqual([/^#/, "node:fs", "unstorage", /^unstorage\//]);
+  /** OMP rewrites a bare `typebox` import to its own facade, which validates nothing. */
+  it("should take every schema builder from @agntn/tools, never bare typebox", () => {
+    const bare = shippedSources().filter((file) =>
+      /from "typebox(?:\/[^"]*)?"/.test(
+        readFileSync(new URL(`../../${file}`, import.meta.url), "utf8"),
+      ),
+    );
+    expect(bare).toEqual([]);
   });
 
   /** `declarationMap` in tsconfig turns maps on for the JS too, so only this keeps them out. */

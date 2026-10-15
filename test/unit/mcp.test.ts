@@ -1,11 +1,12 @@
-import { existsSync, readdirSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
-import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
+import { Client, InMemoryTransport } from "@modelcontextprotocol/client";
+import { StdioClientTransport } from "@modelcontextprotocol/client/stdio";
+import { callTool } from "@agntn/tools/mcp";
 import { Client as RegistryClient } from "../../src/core/client.ts";
-import { callTool, createMcpServer, toolListings } from "../../src/mcp.ts";
+import { createMcpServer } from "../../src/mcp.ts";
 import { serverInfo } from "../../src/server-info.ts";
+import { registriesTools } from "../../src/tools.ts";
 
 const openConnections: Array<{ close(): Promise<void> }> = [];
 
@@ -94,16 +95,14 @@ describe("Registries MCP server", () => {
     );
     const limit = versions?.inputSchema.properties?.["limit"];
 
-    expect(limit).toMatchObject({ anyOf: [{ type: "integer", minimum: 1 }, { const: "all" }] });
+    expect(limit).toMatchObject({ anyOf: [{ type: "integer", minimum: 1 }, { enum: ["all"] }] });
     for (const bad of [0, 2.5, "every"]) {
       const response = await client.callTool({
         name: "registries_versions",
         arguments: { purl: "pkg:npm/lodash", limit: bad },
       });
       expect(response.isError).toBe(true);
-      expect(response.content).toEqual([
-        { type: "text", text: "Invalid arguments for registries_versions" },
-      ]);
+      expect(JSON.stringify(response.content)).toContain("/limit");
     }
   });
 
@@ -115,35 +114,44 @@ describe("Registries MCP server", () => {
     expect(response.content).toEqual([
       {
         type: "text",
-        text: "Unknown registries tool: bad tool",
+        text: String.raw`Unknown registries tool: "bad\ntool"`,
       },
     ]);
   });
 
-  it("should answer through toolListings and callTool as tools/list and tools/call do", async () => {
+  it("should list a title for people and hints that say every lookup reads", async () => {
     const client = await connectTestClient();
-    expect((await client.listTools()).tools).toEqual(toolListings);
-    const calls: Array<[string, Record<string, unknown>]> = [
-      ["registries_ecosystems", {}],
-      ["registries_package", {}],
-      ["registries_package", { purl: "pkg:npm/lodash", extra: true }],
-      ["registries_package", { purl: "pkg:npm/lodash?repository_url=https://evil.test" }],
-      ["registries_bulk_packages", { purls: [] }],
-      ["registries_versions", { purl: "pkg:npm/lodash", limit: 0 }],
-      ["registries_versions", { purl: "pkg:npm/lodash", limit: 1.5 }],
-      ["registries_versions", { purl: "pkg:npm/lodash", limit: "every" }],
-      ["registries_nope", {}],
-    ];
-    for (const [name, args] of calls) {
-      expect(await callTool(name, args)).toEqual(await client.callTool({ name, arguments: args }));
+    for (const tool of (await client.listTools()).tools) {
+      expect(tool.annotations?.title).toBe(tool.title);
+      expect(tool.annotations?.readOnlyHint).toBe(true);
     }
   });
 
-  it("should have one docs /mcp tool file per listed tool", () => {
-    const files = readdirSync(new URL("../../docs/server/mcp/tools/", import.meta.url));
-    expect(files.toSorted()).toEqual(
-      toolListings.map((tool) => `${tool.name.replaceAll("_", "-")}.ts`).toSorted(),
-    );
+  it.each([
+    ["registries_package", {}],
+    ["registries_package", { purl: "pkg:npm/lodash", extra: true }],
+    ["registries_bulk_packages", { purls: [] }],
+  ])("should refuse %s with %j before any registry request", async (name, args) => {
+    const fetch = vi.fn<typeof globalThis.fetch>();
+    vi.stubGlobal("fetch", fetch);
+    try {
+      const response = await (await connectTestClient()).callTool({ name, arguments: args });
+      expect(response.isError).toBe(true);
+      expect(fetch).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("should refuse a repository_url, which would send the request elsewhere", async () => {
+    const client = await connectTestClient();
+    const response = await client.callTool({
+      name: "registries_package",
+      arguments: { purl: "pkg:npm/lodash?repository_url=https://evil.test" },
+    });
+
+    expect(response.isError).toBe(true);
+    expect(JSON.stringify(response.content)).toContain("repository_url is not allowed");
   });
 
   it("should send the registry requests through the client the caller passes", async () => {
@@ -151,10 +159,10 @@ describe("Registries MCP server", () => {
     vi.stubGlobal("fetch", fetch);
     try {
       const result = await callTool(
+        serverInfo,
+        registriesTools({ client: new RegistryClient({ maxRetries: 0, userAgent: "probe" }) }),
         "registries_package",
         { purl: "pkg:npm/defu" },
-        undefined,
-        new RegistryClient({ maxRetries: 0, userAgent: "probe" }),
       );
       expect(result.isError).toBe(true);
       expect(fetch).toHaveBeenCalledOnce();

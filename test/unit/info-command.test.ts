@@ -1,7 +1,6 @@
-import consola from "consola";
 import type { Package } from "../../src/core/types.ts";
 import type { Registry } from "../../src/core/registry.ts";
-import { outputPackageInfo } from "../../src/commands/info.ts";
+import { packageInfoLines } from "../../src/commands/info.ts";
 
 function createPackage(
   overrides: Readonly<
@@ -45,60 +44,47 @@ function createRegistry(registryUrl: string, docsUrl: string): Registry {
   };
 }
 
-function loggedLines(calls: readonly (readonly unknown[])[]): string[] {
-  return calls.map(([message]) => String(message));
-}
-
-describe("outputPackageInfo", () => {
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
+describe("packageInfoLines", () => {
   it("prints docs when documentation url adds new information", () => {
-    const log = vi.spyOn(consola, "log").mockImplementation(() => undefined);
     const pkg = createPackage({
       homepage: "https://serde.rs",
       documentation: "https://docs.rs/serde",
       repository: "https://github.com/serde-rs/serde",
     });
 
-    outputPackageInfo(
+    const lines = packageInfoLines(
       pkg,
       "serde",
       createRegistry("https://crates.io/crates/serde", "https://docs.rs/serde/1.0.220"),
     );
 
-    expect(loggedLines(log.mock.calls)).toContain(
-      "  \x1B[90mDocs:\x1B[0m       https://docs.rs/serde",
-    );
+    expect(lines).toContain("Docs:       https://docs.rs/serde");
   });
 
   it("skips docs when the resolved url falls back to homepage", () => {
-    const log = vi.spyOn(consola, "log").mockImplementation(() => undefined);
     const pkg = createPackage({
       name: "requests",
       homepage: "https://requests.readthedocs.io",
       latestVersion: "2.32.0",
     });
 
-    outputPackageInfo(
+    const lines = packageInfoLines(
       pkg,
       "requests",
       createRegistry("https://pypi.org/project/requests", "https://pypi.org/project/requests"),
     );
 
-    expect(loggedLines(log.mock.calls).some((line) => line.includes("Docs:"))).toBe(false);
+    expect(lines.some((line) => line.includes("Docs:"))).toBe(false);
   });
 
   it("skips docs when the fallback matches the registry page", () => {
-    const log = vi.spyOn(consola, "log").mockImplementation(() => undefined);
     const pkg = createPackage({
       name: "lodash",
       latestVersion: "4.17.21",
       licenses: "MIT",
     });
 
-    outputPackageInfo(
+    const lines = packageInfoLines(
       pkg,
       "lodash",
       createRegistry(
@@ -107,22 +93,35 @@ describe("outputPackageInfo", () => {
       ),
     );
 
-    expect(loggedLines(log.mock.calls).some((line) => line.includes("Docs:"))).toBe(false);
+    expect(lines.some((line) => line.includes("Docs:"))).toBe(false);
   });
 
   it("skips docs when documentation matches repository", () => {
-    const log = vi.spyOn(consola, "log").mockImplementation(() => undefined);
     const pkg = createPackage({
       documentation: "https://github.com/serde-rs/serde",
       repository: "https://github.com/serde-rs/serde",
     });
 
-    outputPackageInfo(
+    const lines = packageInfoLines(
       pkg,
       "serde",
       createRegistry("https://crates.io/crates/serde", "https://docs.rs/serde/1.0.220"),
     );
 
-    expect(loggedLines(log.mock.calls).some((line) => line.includes("Docs:"))).toBe(false);
+    expect(lines.some((line) => line.includes("Docs:"))).toBe(false);
+  });
+
+  it("should keep whatever the registry put in a field on that field's line", () => {
+    const pkg = createPackage({ licenses: "MIT" });
+    pkg.description = "fine\r\nLicense:    forged\u2028\u001B[2Jtoo\u202E";
+
+    const lines = packageInfoLines(
+      pkg,
+      "serde",
+      createRegistry("https://crates.io/crates/serde", "https://docs.rs/serde/1.0.220"),
+    );
+
+    expect(lines[1]).toBe("fine License: forged too");
+    expect(lines.filter((line) => line.startsWith("License:"))).toEqual(["License:    MIT"]);
   });
 });
