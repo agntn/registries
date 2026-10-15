@@ -46,9 +46,9 @@ describe("build config", () => {
   /** The extension tests read their types from dist, so a fresh clone has to build first. */
   it("should build before typechecking the tests", () => {
     const steps = manifest.scripts.typecheck.split(" && ");
+    const testCheck = "tsc -p test/tsconfig.json --noEmit";
 
-    expect(steps.slice(0, steps.indexOf("tsc -p test/tsconfig.json --noEmit"))).toContain(
-      "pnpm build",
-    );
+    expect(steps).toContain(testCheck);
+    expect(steps.slice(0, steps.indexOf(testCheck))).toContain("pnpm build");
   });
 });
