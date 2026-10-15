@@ -1,5 +1,43 @@
 # Changelog
 
+## v0.5.0
+
+[compare changes](https://github.com/agntn/registries/compare/v0.4.4...v0.5.0)
+
+### 🚀 Enhancements
+
+- ⚠️  Bound version lookups for agents ([#146](https://github.com/agntn/registries/pull/146))
+- Add MCP server description and icons ([#148](https://github.com/agntn/registries/pull/148))
+- **cli:** Serve mcp from src/ ([#156](https://github.com/agntn/registries/pull/156))
+
+### 🩹 Fixes
+
+- Stop shipping broken source maps ([#152](https://github.com/agntn/registries/pull/152))
+- Build before typechecking the tests ([#155](https://github.com/agntn/registries/pull/155))
+
+### 💅 Refactors
+
+- ⚠️  Define each tool once ([#157](https://github.com/agntn/registries/pull/157))
+
+### 📖 Documentation
+
+- Slim down AGENTS.md ([#158](https://github.com/agntn/registries/pull/158))
+
+### 🏡 Chore
+
+- ⚠️  Require Node.js 26 ([#153](https://github.com/agntn/registries/pull/153))
+
+#### ⚠️ Breaking Changes
+
+- ⚠️  Bound version lookups for agents ([#146](https://github.com/agntn/registries/pull/146))
+- ⚠️  Define each tool once ([#157](https://github.com/agntn/registries/pull/157))
+- ⚠️  Require Node.js 26 ([#153](https://github.com/agntn/registries/pull/153))
+
+### ❤️ Contributors
+
+- Aeitwoen
+- Ori ([@oritwoen](https://github.com/oritwoen))
+
 ## v0.4.4
 
 [compare changes](https://github.com/agntn/registries/compare/v0.4.3...v0.4.4)
