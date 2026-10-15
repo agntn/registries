@@ -37,4 +37,9 @@ describe("build config", () => {
 
     expect(config.external).toEqual([/^#/, "node:fs", "unstorage", /^unstorage\//]);
   });
+
+  /** `declarationMap` in tsconfig turns maps on for the JS too, so only this keeps them out. */
+  it("should ship no source maps", () => {
+    expect(buildConfig.entries?.[0]).toMatchObject({ dts: { sourcemap: false } });
+  });
 });
