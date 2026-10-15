@@ -5,7 +5,8 @@ import type { Dependency, Package } from "@agntn/registries";
  * before the docs worker answers and when it cannot. Every panel labels a recorded
  * answer as a sample and swaps to a live one as soon as it arrives.
  *
- * Regenerate with the library (see docs/AGENTS.md); do not edit by hand.
+ * Regenerate with a script over `dist/index.mjs`: `createFromPURL` and the four lookups for the six
+ * example PURLs. Never by hand, a sample that lies about a registry is worse than none.
  */
 
 export interface SampleVersion {
