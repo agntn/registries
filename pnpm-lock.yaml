@@ -10,10 +10,10 @@ importers:
     dependencies:
       '@agntn/tools':
         specifier: 0.2.4
-        version: 0.2.4(@earendil-works/pi-coding-agent@0.84.2(ws@8.21.3)(zod@4.3.6))(@modelcontextprotocol/server@2.2.0)(@oh-my-pi/pi-coding-agent@18.0.0)(ai@7.0.140(zod@4.3.6))(zod@4.3.6)
+        version: 0.2.4(@earendil-works/pi-coding-agent@0.84.2(ws@8.21.3)(zod@4.3.6))(@modelcontextprotocol/server@2.3.1)(@oh-my-pi/pi-coding-agent@18.0.0)(ai@7.0.140(zod@4.3.6))(zod@4.3.6)
       '@modelcontextprotocol/server':
-        specifier: 2.2.0
-        version: 2.2.0
+        specifier: 2.3.1
+        version: 2.3.1
       unstorage:
         specifier: 1.17.5
         version: 1.17.5
@@ -25,8 +25,8 @@ importers:
         specifier: 0.84.2
         version: 0.84.2(ws@8.21.3)(zod@4.3.6)
       '@modelcontextprotocol/client':
-        specifier: 2.2.0
-        version: 2.2.0
+        specifier: 2.3.1
+        version: 2.3.1
       '@oh-my-pi/omptype':
         specifier: 18.0.0
         version: 18.0.0
@@ -689,16 +689,16 @@ packages:
     resolution: {integrity: sha512-ABnA53mdfkGZwOFUdZNv2S0CWGO/EIuPj8Vv9xmBFmSYg/qFc7ihO6q5FcQjvoE67kZpWkEc4AhD6B/os04yuA==}
     engines: {node: '>= 10'}
 
-  '@modelcontextprotocol/client@2.2.0':
-    resolution: {integrity: sha512-LxCou/CSYQ6dwEnjhLZY0KnEuc8V4UJ3IEQCl/uR2yHobSQIEdJKUlKLRYRF5i5FqRGHy1eK7une3aAWDHLtig==}
+  '@modelcontextprotocol/client@2.3.1':
+    resolution: {integrity: sha512-mIGZXpHsjnZ6lD+gD/WCMpR5k8yVQQ8nNFH1N0Srf7AvnwTUMYD6pvTY8ng2+He5FfV7YMZLmrjL7cLa/cc3dQ==}
     engines: {node: '>=20'}
 
-  '@modelcontextprotocol/core@2.2.0':
-    resolution: {integrity: sha512-iLhmprRmWI8EcosOA3wVvww22z02NkgqhV4fBH6f/odQBsi7xnJc0HGmi21yWO+/iKw2yzqVE127Zhna5/+JXw==}
+  '@modelcontextprotocol/core@2.3.1':
+    resolution: {integrity: sha512-laVmIhPGpWi7rG9q+0UigblRN0Hws/Yjlb6qLFtVqryXVLkc4h+yN8z731POD2LnAGQlFe7/tXhUm7Bi0YB91g==}
     engines: {node: '>=20'}
 
-  '@modelcontextprotocol/server@2.2.0':
-    resolution: {integrity: sha512-qFnltjus6Gk8Lx6J1w2RXmr3YPN22MNT6qD6zjAkaiWIlFIFxWClz0rXHNuJF/KSUyn5YGhkSvXkWDbQHVLFEQ==}
+  '@modelcontextprotocol/server@2.3.1':
+    resolution: {integrity: sha512-e59MfWuSssj6DoQ96JCTqdW1AXT5/XtnTl0WWd6MU1Ka434fFUGGosCLJbGNySDhHGvxQWoRWK137FXYFkYNWw==}
     engines: {node: '>=20'}
 
   '@oh-my-pi/hashline@18.0.0':
@@ -2929,10 +2929,10 @@ snapshots:
       oxlint: 1.80.0(oxlint-tsgolint@7.0.2003)
       oxlint-tsgolint: 7.0.2003
 
-  '@agntn/tools@0.2.4(@earendil-works/pi-coding-agent@0.84.2(ws@8.21.3)(zod@4.3.6))(@modelcontextprotocol/server@2.2.0)(@oh-my-pi/pi-coding-agent@18.0.0)(ai@7.0.140(zod@4.3.6))(zod@4.3.6)':
+  '@agntn/tools@0.2.4(@earendil-works/pi-coding-agent@0.84.2(ws@8.21.3)(zod@4.3.6))(@modelcontextprotocol/server@2.3.1)(@oh-my-pi/pi-coding-agent@18.0.0)(ai@7.0.140(zod@4.3.6))(zod@4.3.6)':
     optionalDependencies:
       '@earendil-works/pi-coding-agent': 0.84.2(ws@8.21.3)(zod@4.3.6)
-      '@modelcontextprotocol/server': 2.2.0
+      '@modelcontextprotocol/server': 2.3.1
       '@oh-my-pi/pi-coding-agent': 18.0.0
       ai: 7.0.140(zod@4.3.6)
       zod: 4.3.6
@@ -3547,9 +3547,9 @@ snapshots:
       '@mariozechner/clipboard-win32-x64-msvc': 0.3.9
     optional: true
 
-  '@modelcontextprotocol/client@2.2.0':
+  '@modelcontextprotocol/client@2.3.1':
     dependencies:
-      '@modelcontextprotocol/core': 2.2.0
+      '@modelcontextprotocol/core': 2.3.1
       cross-spawn: 7.0.6
       eventsource: 3.0.7
       eventsource-parser: 3.1.1
@@ -3557,13 +3557,13 @@ snapshots:
       pkce-challenge: 5.0.1
       zod: 4.3.6
 
-  '@modelcontextprotocol/core@2.2.0':
+  '@modelcontextprotocol/core@2.3.1':
     dependencies:
       zod: 4.3.6
 
-  '@modelcontextprotocol/server@2.2.0':
+  '@modelcontextprotocol/server@2.3.1':
     dependencies:
-      '@modelcontextprotocol/core': 2.2.0
+      '@modelcontextprotocol/core': 2.3.1
       zod: 4.3.6
 
   '@oh-my-pi/hashline@18.0.0':
