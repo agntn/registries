@@ -22,9 +22,9 @@
   },
   "packageManager": "pnpm@11.24.0",
   "devDependencies": {
-    "@iconify-json/lucide": "1.2.136",
-    "@iconify-json/simple-icons": "1.2.97",
-    "@iconify-json/vscode-icons": "1.2.81",
+    "@iconify-json/lucide": "1.2.151",
+    "@iconify-json/simple-icons": "1.2.101",
+    "@iconify-json/vscode-icons": "1.2.96",
     "nuxtseo-layer-devtools": "5.3.16",
     "wrangler": "4.128.0"
   }
