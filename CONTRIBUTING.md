@@ -44,12 +44,12 @@ Running `registries mcp` from this checkout? It serves `src/`, so an edit needs 
 
 ## Docs site
 
-`pnpm docs` serves it on port 3000.
+`pnpm run docs` serves it on port 3000.
 
 - Registry metadata is untrusted. Descriptions, keywords and maintainers render as text, never `v-html`.
 - Counts on the site come from `ECOSYSTEMS` or from the library. Nobody types a number into copy.
 - Every `server/api` route goes through `cachedAnswer` in `server/utils/query.ts`. The registries behind it are public services, be nice to them.
 - The explorer mirrors the response shapes as local interfaces. The route files own them.
-- Workers Builds installs `docs/` alone. A new npm import that `src/index.ts` or `src/tools.ts` can reach needs an entry in `docs/package.json`, or the deploy breaks while everything builds fine locally.
-- CI installs the root only, so no test loads the worker. Prove a `/mcp` change with a probe on `nuxt dev` or `wrangler dev`.
+- `docs/` lives in the root workspace, one lockfile, versions in the catalogs of `pnpm-workspace.yaml`. Nothing gets hoisted, so a package the site's own files import needs a line in `docs/package.json`, and `test/unit/docs-dependencies.test.ts` notices the one you forgot. What `../src` imports resolves from the root package.
+- CI installs `docs/` but never builds it, so no test loads the worker. Prove a `/mcp` change with a probe on `nuxt dev` or `wrangler dev`.
 - The landing's SEO description ends without a period, or its OG image quietly skips the prerender. `test/unit/docs-og.test.ts` checks it.

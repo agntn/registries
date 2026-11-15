@@ -1,6 +1,8 @@
 # docs/
 
-Cloudflare Workers Builds deploys this site to registries.agntn.dev. It installs `docs/` alone, so the root `node_modules` and `dist/` never exist there, and it takes Node.js from the root `.node-version`, never from `engines`.
+Cloudflare Workers Builds deploys this site to registries.agntn.dev. It runs the install in `docs/`, and pnpm walks up to the root lockfile and fills both `node_modules`. `dist/` never exists there. Node.js comes from the root `.node-version`, never from `engines`.
+
+The build trigger watches `docs/*` and `src/*`. A catalog bump touches only the root `pnpm-lock.yaml` and `pnpm-workspace.yaml`, so on its own it doesn't redeploy the site.
 
 Resources on the Cloudflare account, bound by id in `wrangler.jsonc`:
 

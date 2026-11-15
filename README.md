@@ -223,15 +223,17 @@ Want a seventh? Extend `Registry`, six methods, `register("hex", "https://hex.pm
 ## 🛠️ Development
 
 ```bash
-pnpm install
+pnpm install       # the library and docs/, one lockfile
 pnpm dev:prepare   # obuild --stub, src/ changes show up without a build
 pnpm fmt           # oxlint --fix and oxfmt
 pnpm lint          # builds first, then oxlint and oxfmt --check
 pnpm typecheck     # library, then a build, so the tests and extensions find dist/
 pnpm test:run
 pnpm build         # obuild
-pnpm docs          # the Docus site on :3000
+pnpm run docs      # the Docus site on :3000
 ```
+
+The `run` matters. pnpm 12 keeps a bare `pnpm docs` for itself and just asks which package you meant.
 
 Point an MCP client at `node <checkout>/dist/cli.mjs mcp` and it serves `src/`, so an edit costs a server restart, not a rebuild. Forget the restart and the next tool call tells you so, instead of quietly running half old, half new code. `REGISTRIES_DIST=1` pins it to the bundle.
 
