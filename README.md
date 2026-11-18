@@ -225,8 +225,8 @@ Want a seventh? Extend `Registry`, six methods, `register("hex", "https://hex.pm
 ```bash
 pnpm install       # the library and docs/, one lockfile
 pnpm dev:prepare   # obuild --stub, src/ changes show up without a build
-pnpm fmt           # oxlint --fix and oxfmt
-pnpm lint          # builds first, then oxlint and oxfmt --check
+pnpm fmt           # vp lint --fix and vp fmt
+pnpm lint          # builds first, then vp lint and vp fmt --check
 pnpm typecheck     # library, then a build, so the tests and extensions find dist/
 pnpm test:run
 pnpm build         # obuild

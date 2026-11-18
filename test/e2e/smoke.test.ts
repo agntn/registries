@@ -1,6 +1,6 @@
 /**
  * E2E smoke tests — real API calls to each registry.
- * Run manually: pnpm vitest run test/e2e/smoke.test.ts
+ * Run manually: pnpm exec vp test run test/e2e/smoke.test.ts
  *
  * These tests hit live APIs and may fail due to rate limiting or network issues.
  */
