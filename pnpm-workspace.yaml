@@ -48,7 +48,6 @@ catalogs:
     "@types/node": 26.6.5
     "@vueuse/core": 14.4.0
     ai: 7.0.140
-    changelogen: 0.6.2
     nuxtseo-layer-devtools: 5.3.16
     obuild: 0.4.40
     oxlint-tsgolint: 7.0.2007

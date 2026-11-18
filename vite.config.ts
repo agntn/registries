@@ -6,7 +6,7 @@ import { defineConfig } from "vite-plus";
 export default defineConfig({
   /** `docs/tsconfig.json` points at `.nuxt/`, which CI never generates. */
   tsconfig: "tsconfig.json",
-  fmt: { ...oxfmt, ignorePatterns: ["dist", "docs", "CHANGELOG.md"] },
+  fmt: { ...oxfmt, ignorePatterns: ["dist", "docs"] },
   lint: {
     ...oxlint,
     rules: {
