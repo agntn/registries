@@ -105,7 +105,7 @@ export async function create(
 ): Promise<Registry> {
   const entry = table().get(ecosystem);
   if (!entry) {
-    throw new UnknownEcosystemError(ecosystem);
+    throw new UnknownEcosystemError(ecosystem, ecosystems());
   }
   const RegistryClass = await entry.load();
   return new RegistryClass(baseURL || entry.defaultURL, client ?? defaultClient());

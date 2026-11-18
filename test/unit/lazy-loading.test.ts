@@ -69,7 +69,11 @@ describe("lazy adapters", () => {
   });
 
   it("should reject an unknown ecosystem without loading anything", async () => {
-    await expect(create("hex")).rejects.toBeInstanceOf(UnknownEcosystemError);
+    const refusal = create("hex");
+    await expect(refusal).rejects.toBeInstanceOf(UnknownEcosystemError);
+    await expect(refusal).rejects.toMatchObject({
+      supported: ["npm", "cargo", "pypi", "gem", "composer", "alpm"],
+    });
     expect(loaded.modules).toEqual(["npm"]);
   });
 
