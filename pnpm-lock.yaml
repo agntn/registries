@@ -6,6 +6,9 @@ settings:
 
 catalogs:
   deps:
+    '@agntn/hashes':
+      specifier: 0.7.3
+      version: 0.7.3
     '@agntn/tools':
       specifier: 0.2.4
       version: 0.2.4
@@ -120,6 +123,9 @@ importers:
 
   .:
     dependencies:
+      '@agntn/hashes':
+        specifier: catalog:deps
+        version: 0.7.3(@earendil-works/pi-coding-agent@0.84.4(@modelcontextprotocol/sdk@1.32.2(@cfworker/json-schema@4.1.1)(supports-color@10.2.2)(zod@4.6.7))(supports-color@10.2.2)(ws@8.21.3)(zod@4.6.7))(@oh-my-pi/pi-coding-agent@18.0.11)(ai@7.0.140(zod@4.6.7))(zod@4.6.7)
       '@agntn/tools':
         specifier: catalog:deps
         version: 0.2.4(@earendil-works/pi-coding-agent@0.84.4(@modelcontextprotocol/sdk@1.32.2(@cfworker/json-schema@4.1.1)(supports-color@10.2.2)(zod@4.6.7))(supports-color@10.2.2)(ws@8.21.3)(zod@4.6.7))(@modelcontextprotocol/server@2.4.0)(@oh-my-pi/pi-coding-agent@18.0.11)(ai@7.0.140(zod@4.6.7))(zod@4.6.7)
@@ -239,6 +245,22 @@ importers:
 
 packages:
 
+  '@agntn/hashes@0.7.3':
+    resolution: {integrity: sha512-88BdFaCScy3vShdopsRYkOfenW11LYDOv9oymv+nAFnOukvh6Hj5f4WvRD7b7lmVd+43t5FsIzeiePbSoQnvPA==}
+    engines: {node: '>=26'}
+    hasBin: true
+    peerDependencies:
+      '@earendil-works/pi-coding-agent': '>=0.84.2 <2'
+      '@oh-my-pi/pi-coding-agent': '>=18.0.0 <19'
+      ai: '>=7.0.0'
+    peerDependenciesMeta:
+      '@earendil-works/pi-coding-agent':
+        optional: true
+      '@oh-my-pi/pi-coding-agent':
+        optional: true
+      ai:
+        optional: true
+
   '@agntn/ox@0.1.0':
     resolution: {integrity: sha512-bYyCMczypvi/bxDgK1gOFhOnGFAqTNnTTWl+yIocaP68wsfGtwZwxN9Rld1bMcLXRVlO9PJCl7EASqToz8dOVw==}
     engines: {node: '>=24'}
@@ -249,6 +271,30 @@ packages:
 
   '@agntn/tools@0.2.4':
     resolution: {integrity: sha512-5fRpNr2WFaumfl+S7IkaCgkFXqD6hNRHqZfL90FEJb/yJdD5xoRBYgYXalSw6WNSoeoe7+qaVHgZP9bGsBo/Zw==}
+    engines: {node: '>=26'}
+    peerDependencies:
+      '@earendil-works/pi-coding-agent': '>=0.84.2 <2'
+      '@modelcontextprotocol/server': '>=2.2.0 <3'
+      '@oh-my-pi/pi-coding-agent': '>=18.0.0 <19'
+      ai: '>=7.0.0 <8'
+      h3-mcp: '>=0.2.0 <0.3'
+      zod: '>=4.1.13 <5'
+    peerDependenciesMeta:
+      '@earendil-works/pi-coding-agent':
+        optional: true
+      '@modelcontextprotocol/server':
+        optional: true
+      '@oh-my-pi/pi-coding-agent':
+        optional: true
+      ai:
+        optional: true
+      h3-mcp:
+        optional: true
+      zod:
+        optional: true
+
+  '@agntn/tools@0.3.0':
+    resolution: {integrity: sha512-opDmmURapVZBZ2f4OfbVSY5KpVwEh9cON5bIVpbeLIvn+l+o0sSuIvi2+42Tfrn73NK2Dp4r+m+aP3bk248Zaw==}
     engines: {node: '>=26'}
     peerDependencies:
       '@earendil-works/pi-coding-agent': '>=0.84.2 <2'
@@ -9634,6 +9680,18 @@ packages:
 
 snapshots:
 
+  '@agntn/hashes@0.7.3(@earendil-works/pi-coding-agent@0.84.4(@modelcontextprotocol/sdk@1.32.2(@cfworker/json-schema@4.1.1)(supports-color@10.2.2)(zod@4.6.7))(supports-color@10.2.2)(ws@8.21.3)(zod@4.6.7))(@oh-my-pi/pi-coding-agent@18.0.11)(ai@7.0.140(zod@4.6.7))(zod@4.6.7)':
+    dependencies:
+      '@agntn/tools': 0.3.0(@earendil-works/pi-coding-agent@0.84.4(@modelcontextprotocol/sdk@1.32.2(@cfworker/json-schema@4.1.1)(supports-color@10.2.2)(zod@4.6.7))(supports-color@10.2.2)(ws@8.21.3)(zod@4.6.7))(@modelcontextprotocol/server@2.4.0)(@oh-my-pi/pi-coding-agent@18.0.11)(ai@7.0.140(zod@4.6.7))(zod@4.6.7)
+      '@modelcontextprotocol/server': 2.4.0
+    optionalDependencies:
+      '@earendil-works/pi-coding-agent': 0.84.4(@modelcontextprotocol/sdk@1.32.2(@cfworker/json-schema@4.1.1)(supports-color@10.2.2)(zod@4.6.7))(supports-color@10.2.2)(ws@8.21.3)(zod@4.6.7)
+      '@oh-my-pi/pi-coding-agent': 18.0.11
+      ai: 7.0.140(zod@4.6.7)
+    transitivePeerDependencies:
+      - h3-mcp
+      - zod
+
   '@agntn/ox@0.1.0(843d09d94c0ed8b2e83df35caca680e6)':
     dependencies:
       oxfmt: 0.79.0(vite-plus@1.7.0(@opentelemetry/api@1.9.1)(@types/node@26.6.5)(@vitest/browser-preview@5.1.0)(@vitest/ui@5.1.0)(@voidzero-dev/vite-plus-core@8.3.8000(@types/node@26.6.5)(@volar/typescript@2.4.28(typescript@5.9.3))(@vue/language-core@3.3.11)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(typescript@5.9.3)(yaml@2.9.1))(@volar/typescript@2.4.28(typescript@5.9.3))(@vue/language-core@3.3.11)(esbuild@0.28.2)(jiti@2.7.0)(oxlint-tsgolint@7.0.2007)(terser@5.51.2)(typescript@5.9.3)(vitest@5.1.0)(yaml@2.9.1))
@@ -9641,6 +9699,14 @@ snapshots:
       oxlint-tsgolint: 7.0.2007
 
   '@agntn/tools@0.2.4(@earendil-works/pi-coding-agent@0.84.4(@modelcontextprotocol/sdk@1.32.2(@cfworker/json-schema@4.1.1)(supports-color@10.2.2)(zod@4.6.7))(supports-color@10.2.2)(ws@8.21.3)(zod@4.6.7))(@modelcontextprotocol/server@2.4.0)(@oh-my-pi/pi-coding-agent@18.0.11)(ai@7.0.140(zod@4.6.7))(zod@4.6.7)':
+    optionalDependencies:
+      '@earendil-works/pi-coding-agent': 0.84.4(@modelcontextprotocol/sdk@1.32.2(@cfworker/json-schema@4.1.1)(supports-color@10.2.2)(zod@4.6.7))(supports-color@10.2.2)(ws@8.21.3)(zod@4.6.7)
+      '@modelcontextprotocol/server': 2.4.0
+      '@oh-my-pi/pi-coding-agent': 18.0.11
+      ai: 7.0.140(zod@4.6.7)
+      zod: 4.6.7
+
+  '@agntn/tools@0.3.0(@earendil-works/pi-coding-agent@0.84.4(@modelcontextprotocol/sdk@1.32.2(@cfworker/json-schema@4.1.1)(supports-color@10.2.2)(zod@4.6.7))(supports-color@10.2.2)(ws@8.21.3)(zod@4.6.7))(@modelcontextprotocol/server@2.4.0)(@oh-my-pi/pi-coding-agent@18.0.11)(ai@7.0.140(zod@4.6.7))(zod@4.6.7)':
     optionalDependencies:
       '@earendil-works/pi-coding-agent': 0.84.4(@modelcontextprotocol/sdk@1.32.2(@cfworker/json-schema@4.1.1)(supports-color@10.2.2)(zod@4.6.7))(supports-color@10.2.2)(ws@8.21.3)(zod@4.6.7)
       '@modelcontextprotocol/server': 2.4.0
