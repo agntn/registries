@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { createStorage } from "unstorage";
 import memoryDriver from "unstorage/drivers/memory";
 import {
@@ -478,6 +479,19 @@ describe("lockfile", () => {
       expect(str).toMatch(/^sha256-[a-f0-9]{64}$/);
       expect(num).toMatch(/^sha256-[a-f0-9]{64}$/);
       expect(bool).toMatch(/^sha256-[a-f0-9]{64}$/);
+    });
+
+    /** Lockfiles on disk already carry these digests. */
+    it.each([
+      ["an object", { name: "lodash", version: "4.17.21" }],
+      ["text outside ASCII", { description: "zażółć gęślą jaźń 😀" }],
+      ["a lone surrogate", "\uD800 half a pair"],
+      ["more than one block", "x".repeat(4096)],
+      ["an empty string", ""],
+    ])("keeps the digest of %s byte for byte with node:crypto", (_label, value) => {
+      const oracle = createHash("sha256").update(JSON.stringify(value)).digest("hex");
+
+      expect(computeIntegrity(value)).toBe(`sha256-${oracle}`);
     });
   });
 });

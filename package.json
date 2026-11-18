@@ -82,6 +82,7 @@
     "docs:build": "pnpm --filter docs build"
   },
   "dependencies": {
+    "@agntn/hashes": "catalog:deps",
     "@agntn/tools": "catalog:deps",
     "@modelcontextprotocol/server": "catalog:deps",
     "unstorage": "catalog:deps"

@@ -1,8 +1,8 @@
+import { sha256 } from "@agntn/hashes/sha2";
 import { createStorage, prefixStorage } from "unstorage";
 import fsDriver from "unstorage/drivers/fs";
 import type { Storage } from "unstorage";
 import { getCacheDir } from "./paths.ts";
-import { hash } from "node:crypto";
 
 let _storage: Storage | undefined;
 
@@ -44,7 +44,8 @@ export function getEcosystemStorage(ecosystem: string): Storage {
  * @returns {string} The prefixed hexadecimal digest.
  */
 export function computeIntegrity(value: unknown): string {
-  return `sha256-${hash("sha256", JSON.stringify(value), "hex")}`;
+  const digest = sha256(Buffer.from(JSON.stringify(value)));
+  return `sha256-${Buffer.from(digest).toString("hex")}`;
 }
 
 /** Dispose the storage instance. Call on process exit. */

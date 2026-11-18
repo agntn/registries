@@ -29,6 +29,7 @@ Running `registries mcp` from this checkout? It serves `src/`, so an edit needs 
 - PURLs are parsed in `src/core/purl.ts` only. Everything else calls `parsePURL` or `createFromPURL`.
 - No `as any`, no `@ts-ignore`, no `@ts-expect-error`. The lint flags `@ts-ignore` and any `any` that flows somewhere. `@ts-expect-error` slips past it, so that one's on you.
 - Keep the cache key format stable, old lockfiles depend on it.
+- Hashes in `src/` and `extensions/` come from `@agntn/hashes`, not `node:crypto`. `test/unit/build-config.test.ts` fails on the import. Keep the cache digest byte for byte identical, unless refetching every cached entry sounds fun.
 
 ## Agent tools and the CLI
 

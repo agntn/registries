@@ -44,6 +44,16 @@ describe("build config", () => {
     expect(bare).toEqual([]);
   });
 
+  /** The family hashes in one place, so `node:crypto` stays out of what ships. */
+  it("should take every hash from @agntn/hashes, never node:crypto", () => {
+    const native = shippedSources().filter((file) =>
+      /from "(?:node:)?crypto"/.test(
+        readFileSync(new URL(`../../${file}`, import.meta.url), "utf8"),
+      ),
+    );
+    expect(native).toEqual([]);
+  });
+
   /** `declarationMap` in tsconfig turns maps on for the JS too, so only this keeps them out. */
   it("should ship no source maps", () => {
     expect(buildConfig.entries?.[0]).toMatchObject({ dts: { sourcemap: false } });
