@@ -148,19 +148,38 @@ const refused = {
   ],
 };
 
-/* Starts `mcp` from the built bin of `checkout` and connects a client to it. */
-async function connect(checkout: string, extra: Readonly<Record<string, string>> = {}) {
-  const client = new Client({ name: "registries-test", version: "1.0.0" });
+type Era = "legacy" | Readonly<{ pin: string }>;
+type Session = Readonly<{ env?: Readonly<Record<string, string>>; mode?: Era }>;
+
+/* Starts `mcp` from the built bin of `checkout` and connects a client of one protocol era. */
+async function connect(checkout: string, session: Session = {}) {
+  const client = new Client(
+    { name: "registries-test", version: "1.0.0" },
+    { versionNegotiation: { mode: session.mode ?? "legacy" } },
+  );
   await client.connect(
     new StdioClientTransport({
       command: process.execPath,
       args: [join(checkout, "dist/cli.mjs"), "mcp"],
-      env: { ...env, ...extra },
+      env: { ...env, ...session.env },
       stderr: "ignore",
     }),
   );
   return client;
 }
+
+const builds = [
+  { from: "source", env: {} },
+  { from: "bundle", env: { REGISTRIES_DIST: "1" } },
+] as const;
+const toolNames = [
+  "registries_package",
+  "registries_versions",
+  "registries_dependencies",
+  "registries_maintainers",
+  "registries_bulk_packages",
+  "registries_ecosystems",
+];
 
 describe.skipIf(!existsSync(join(root, "dist/cli.mjs")))(
   "registries mcp from the built bin",
@@ -213,6 +232,31 @@ describe.skipIf(!existsSync(join(root, "dist/cli.mjs")))(
         rmSync(production, { recursive: true, force: true });
       }
     });
+
+    it.each(builds)("should let a client pinned to 2026 listen, from the $from", async (build) => {
+      const client = await connect(root, { env: build.env, mode: { pin: "2026-07-28" } });
+      try {
+        expect(client.getNegotiatedProtocolVersion()).toBe("2026-07-28");
+        const subscription = await client.listen({ toolsListChanged: true });
+        expect((await client.listTools()).tools.map((tool) => tool.name)).toEqual(toolNames);
+        await subscription.close();
+      } finally {
+        await client.close();
+      }
+    });
+
+    it.each(builds)(
+      "should still open a 2025 client with initialize, from the $from",
+      async (build) => {
+        const client = await connect(root, { env: build.env });
+        try {
+          expect(client.getNegotiatedProtocolVersion()).toMatch(/^2025-/u);
+          expect((await client.listTools()).tools.map((tool) => tool.name)).toEqual(toolNames);
+        } finally {
+          await client.close();
+        }
+      },
+    );
 
     it("should refuse a call after a pull instead of mixing old and new modules", async () => {
       const checkout = copyCheckout(tmpdir());
@@ -280,7 +324,7 @@ describe.skipIf(!existsSync(join(root, "dist/cli.mjs")))(
       } finally {
         await succeeding.close();
       }
-      const failing = await connect(checkout, { REGISTRIES_TEST_FAIL: "1" });
+      const failing = await connect(checkout, { env: { REGISTRIES_TEST_FAIL: "1" } });
       try {
         expect(
           await failing.callTool({ name: "registries_ecosystems", arguments: {} }),
