@@ -14,6 +14,12 @@ useSeo({
   breadcrumbs: [{ title, path: "/lookup" }],
 });
 
+/** `useSeo` points agents at `/lookup.md`, a twin this page doesn't have, so the link goes. */
+const dropMarkdownTwin = injectHead().hooks?.hook("tags:resolve", (ctx) => {
+  ctx.tags = ctx.tags.filter((tag) => !(tag.tag === "link" && tag.props.type === "text/markdown"));
+});
+onScopeDispose(() => dropMarkdownTwin?.());
+
 defineOgImage(
   "Docs.takumi",
   { headline: "Explorer", title, description },
