@@ -169,6 +169,18 @@ describe("errors", () => {
       expect(error.message).toContain("custom-pkg");
     });
 
+    it("should name the supported ecosystems when it knows them", () => {
+      const error = new UnknownEcosystemError("golang", ["npm", "cargo"]);
+      expect(error.message).toBe("Unknown ecosystem: golang. Supported: npm, cargo");
+      expect(error.supported).toEqual(["npm", "cargo"]);
+    });
+
+    it("should keep the bare message without a list", () => {
+      const error = new UnknownEcosystemError("golang");
+      expect(error.message).toBe("Unknown ecosystem: golang");
+      expect(error.supported).toEqual([]);
+    });
+
     it("is instanceof PkioError", () => {
       const error = new UnknownEcosystemError("unknown");
       expect(error).toBeInstanceOf(PkioError);

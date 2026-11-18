@@ -154,6 +154,26 @@ describe("Registries MCP server", () => {
     expect(JSON.stringify(response.content)).toContain("repository_url is not allowed");
   });
 
+  it("should name the supported ecosystems when a PURL asks for another one", async () => {
+    const fetch = vi.fn<typeof globalThis.fetch>();
+    vi.stubGlobal("fetch", fetch);
+    try {
+      const response = await (
+        await connectTestClient()
+      ).callTool({ name: "registries_package", arguments: { purl: "pkg:golang/example" } });
+      expect(response.isError).toBe(true);
+      expect(response.content).toEqual([
+        {
+          type: "text",
+          text: "registries_package failed: Unknown ecosystem: golang. Supported: npm, cargo, pypi, gem, composer, alpm",
+        },
+      ]);
+      expect(fetch).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("should send the registry requests through the client the caller passes", async () => {
     const fetch = vi.fn<typeof globalThis.fetch>(async () => new Response("", { status: 503 }));
     vi.stubGlobal("fetch", fetch);

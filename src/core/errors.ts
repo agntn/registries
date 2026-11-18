@@ -60,11 +60,15 @@ export class RateLimitError extends PkioError {
 
 export class UnknownEcosystemError extends PkioError {
   readonly ecosystem: string;
+  /** The keys that would have worked, so nobody has to guess twice. */
+  readonly supported: readonly string[];
 
-  constructor(ecosystem: string) {
-    super(`Unknown ecosystem: ${ecosystem}`);
+  constructor(ecosystem: string, supported: readonly string[] = []) {
+    const hint = supported.length > 0 ? `. Supported: ${supported.join(", ")}` : "";
+    super(`Unknown ecosystem: ${ecosystem}${hint}`);
     this.name = "UnknownEcosystemError";
     this.ecosystem = ecosystem;
+    this.supported = supported;
   }
 }
 

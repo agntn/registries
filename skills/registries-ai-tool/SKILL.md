@@ -117,7 +117,7 @@ The tools throw errors as exceptions (not structured return values). Bad input f
 
 - **`NotFoundError`**: Package or version does not exist
 - **`InvalidPURLError`**: Malformed PURL string (missing `pkg:` prefix, bad encoding)
-- **`UnknownEcosystemError`**: Unsupported ecosystem type
+- **`UnknownEcosystemError`**: Unsupported ecosystem type. The message lists the ones that work
 - **`RateLimitError`**: Registry rate limit hit (the HTTP client retries automatically first)
 
 With multi-step tool use, failed calls appear as `tool-error` parts and the agent can self-correct (e.g., fix PURL format, try a different ecosystem). If you need custom error handling, wrap the tool's `execute` function.
