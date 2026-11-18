@@ -17,6 +17,14 @@ export default defineNuxtConfig({
     url: "https://registries.agntn.dev",
     name: "@agntn/registries",
   },
+  /** The lookup page has no markdown twin, so agents get the page itself, not a `/raw` 404. */
+  agentDiscovery: {
+    excludePrefixes: { extend: ["/lookup"] },
+  },
+  /** Docus lists `content/` only and leaves app routes out, so the Vue pages come from here. */
+  sitemap: {
+    sources: ["/api/__sitemap__/pages"],
+  },
   llms: {
     domain: "https://registries.agntn.dev",
     sections: [
@@ -31,6 +39,17 @@ export default defineNuxtConfig({
               "Add it to any MCP client as an HTTP server, for example `claude mcp add --transport http registries https://registries.agntn.dev/mcp`.",
           },
         ],
+      },
+      /** One section per content folder, or agent discovery lumps every page into one `Docs`. */
+      {
+        title: "Guide",
+        contentCollection: "docs",
+        contentFilters: [{ field: "path", operator: "LIKE", value: "/guide%" }],
+      },
+      {
+        title: "Registries",
+        contentCollection: "docs",
+        contentFilters: [{ field: "path", operator: "LIKE", value: "/registries%" }],
       },
     ],
   },
@@ -124,15 +143,16 @@ export default defineNuxtConfig({
       asyncContext: true,
     },
     compatibilityDate: "2026-09-03",
-    prerender: {
-      crawlLinks: true,
-      routes: ["/", "/sitemap.xml", "/robots.txt", "/llms.txt", "/llms-full.txt"],
-      ignore: ["/api"],
-    },
     cloudflare: {
       deployConfig: true,
       nodeCompat: true,
     },
+  },
+  /** Nuxt's own prerender option. The same keys under `nitro.prerender` are deprecated. */
+  prerender: {
+    crawlLinks: true,
+    routes: ["/", "/sitemap.xml", "/robots.txt", "/llms.txt", "/llms-full.txt"],
+    ignore: ["/api"],
   },
   compatibilityDate: "2026-09-03",
   /** In production the response cache lives in KV, so it survives isolates. */

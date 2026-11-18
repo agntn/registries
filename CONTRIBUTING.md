@@ -52,4 +52,4 @@ Running `registries mcp` from this checkout? It serves `src/`, so an edit needs 
 - The explorer mirrors the response shapes as local interfaces. The route files own them.
 - `docs/` lives in the root workspace, one lockfile, versions in the catalogs of `pnpm-workspace.yaml`. Nothing gets hoisted, so a package the site's own files import needs a line in `docs/package.json`, and `test/unit/docs-dependencies.test.ts` notices the one you forgot. What `../src` imports resolves from the root package.
 - CI installs `docs/` but never builds it, so no test loads the worker. Prove a `/mcp` change with a probe on `nuxt dev` or `wrangler dev`.
-- The landing's SEO description ends without a period, or its OG image quietly skips the prerender. `test/unit/docs-og.test.ts` checks it.
+- A page under `docs/app/pages/` calls `useSeo` and `defineOgImage` itself. Its path goes into `PAGES` in `server/api/__sitemap__/pages.ts` and into `agentDiscovery.excludePrefixes` in `nuxt.config.ts`. Then it drops the markdown link `useSeo` adds, the way `lookup.vue` does. Skip a step and crawlers miss the page, or agents go hunting for a `.md` twin that never existed.
