@@ -2,7 +2,7 @@
 
 Cloudflare Workers Builds deploys this site to registries.agntn.dev. It runs the install in `docs/`, and pnpm walks up to the root lockfile and fills both `node_modules`. `dist/` never exists there. Node.js comes from the root `.node-version`, never from `engines`.
 
-The build trigger watches `docs/*` and `src/*`. A catalog bump touches only the root `pnpm-lock.yaml` and `pnpm-workspace.yaml`, so on its own it doesn't redeploy the site.
+The build trigger watches `docs/*`, `src/*`, `package.json` and `.node-version`. The site prints the package version, and a release PR touches `package.json` alone, so that entry is what redeploys it. A catalog bump touches only the root `pnpm-lock.yaml` and `pnpm-workspace.yaml`, so on its own it doesn't redeploy the site.
 
 Resources on the Cloudflare account, bound by id in `wrangler.jsonc`:
 
