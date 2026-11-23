@@ -38,8 +38,8 @@ catalogs:
   dev:
     "@agntn/ox": 0.1.0
     "@earendil-works/pi-coding-agent": 0.84.4
-    "@iconify-json/lucide": 1.2.155
-    "@iconify-json/simple-icons": 1.2.102
+    "@iconify-json/lucide": 1.2.157
+    "@iconify-json/simple-icons": 1.2.103
     "@iconify-json/vscode-icons": 1.2.99
     "@modelcontextprotocol/client": 2.4.0
     "@nuxt/content": 3.16.2
